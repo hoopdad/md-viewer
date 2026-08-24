@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MdViewer.App/MdViewer.App.csproj" />
+    <Project Path="src/MdViewer.Core/MdViewer.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MdViewer.Core.Tests/MdViewer.Core.Tests.csproj" />
+  </Folder>
+</Solution>
