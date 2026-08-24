@@ -36,7 +36,7 @@ var rendered = new MarkdownRenderer().Render(document.Markdown, document.Display
 ## Other conventions
 
 Definition
-: A term followed by its description.
+:   A term followed by its description.
 
 The formula extension remains inert: $a^2 + b^2 = c^2$.
 

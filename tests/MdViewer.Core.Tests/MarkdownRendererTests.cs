@@ -68,7 +68,7 @@ public sealed class MarkdownRendererTests
         var result = _renderer.Render($"[click]({target})", "Links");
 
         Assert.DoesNotContain(target, result.Html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("data-blocked-link", result.Html);
+        Assert.Contains("href=\"#md-viewer-blocked-link\"", result.Html);
     }
 
     [Theory]
@@ -93,5 +93,45 @@ public sealed class MarkdownRendererTests
         Assert.Contains("A &lt;title&gt;", result.Html);
         Assert.DoesNotContain("<script", result.Html, StringComparison.OrdinalIgnoreCase);
         Assert.True(result.WordCount > 0);
+    }
+
+    [Fact]
+    public void Render_never_emits_active_resource_elements()
+    {
+        const string markdown = """
+            ![](https://example.com/image.png)
+            ![video](https://www.youtube.com/watch?v=abc)
+            <iframe src="https://example.com"></iframe>
+            """;
+
+        var result = _renderer.Render(markdown, "Resources");
+
+        Assert.DoesNotContain("<img", result.Html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<iframe", result.Html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<video", result.Html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<audio", result.Html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<embed", result.Html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<object", result.Html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Render_supports_footnotes_definition_lists_and_autolinks()
+    {
+        const string markdown = """
+            Term
+            :   Definition
+
+            A note.[^1]
+
+            [^1]: Footnote text.
+
+            Visit https://example.com.
+            """;
+
+        var result = _renderer.Render(markdown, "Extensions");
+
+        Assert.Contains("<dl", result.Html);
+        Assert.Contains("class=\"footnotes\"", result.Html);
+        Assert.Contains("href=\"https://example.com\"", result.Html);
     }
 }

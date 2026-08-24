@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -11,10 +12,13 @@ namespace MdViewer.App;
 
 public partial class MainWindow : Window
 {
+    private const string DocumentUri = "https://md-viewer.local/document";
+
     private readonly MarkdownRenderer _renderer = new();
     private readonly string? _initialFilePath;
     private readonly string? _initialError;
     private string? _currentFilePath;
+    private byte[]? _documentContent;
     private bool _webViewReady;
 
     public MainWindow(string? initialFilePath, string? initialError)
@@ -50,7 +54,12 @@ public partial class MainWindow : Window
 
     private async Task InitializeWebViewAsync()
     {
-        await Viewer.EnsureCoreWebView2Async();
+        var userDataFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "md-viewer",
+            "WebView2");
+        var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+        await Viewer.EnsureCoreWebView2Async(environment);
         var core = Viewer.CoreWebView2;
         var settings = core.Settings;
 
@@ -93,7 +102,8 @@ public partial class MainWindow : Window
             ReloadButton.IsEnabled = true;
             WelcomePanel.Visibility = Visibility.Collapsed;
             Viewer.Visibility = Visibility.Visible;
-            Viewer.NavigateToString(rendered.Html);
+            _documentContent = Encoding.UTF8.GetBytes(rendered.Html);
+            Viewer.CoreWebView2.Navigate(DocumentUri);
         }
         catch (MarkdownFileTooLargeException exception)
         {
@@ -123,6 +133,14 @@ public partial class MainWindow : Window
 
     private void ShowWelcomeError(string title, string message)
     {
+        _currentFilePath = null;
+        _documentContent = null;
+        DocumentTitle.Text = "md-viewer";
+        DocumentPath.Text = "Open a Markdown file to begin";
+        DocumentPath.ToolTip = null;
+        MetricsText.Text = string.Empty;
+        ReloadButton.IsEnabled = false;
+        Title = "md-viewer";
         Viewer.Visibility = Visibility.Collapsed;
         WelcomePanel.Visibility = Visibility.Visible;
         WelcomeTitle.Text = title;
@@ -205,8 +223,9 @@ public partial class MainWindow : Window
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
         if (!_webViewReady
-            || e.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase)
-            || e.Uri.StartsWith("data:text/html", StringComparison.OrdinalIgnoreCase))
+            || e.Uri.Equals(DocumentUri, StringComparison.OrdinalIgnoreCase)
+            || e.Uri.StartsWith($"{DocumentUri}#", StringComparison.OrdinalIgnoreCase)
+            || e.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -234,6 +253,17 @@ public partial class MainWindow : Window
 
     private void OnWebResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
     {
+        if (e.Request.Uri.Equals(DocumentUri, StringComparison.OrdinalIgnoreCase)
+            && _documentContent is not null)
+        {
+            e.Response = Viewer.CoreWebView2.Environment.CreateWebResourceResponse(
+                new MemoryStream(_documentContent, writable: false),
+                200,
+                "OK",
+                "Content-Type: text/html; charset=utf-8\r\nCache-Control: no-store");
+            return;
+        }
+
         if (e.Request.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
             || e.Request.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase))
         {
@@ -266,7 +296,19 @@ public partial class MainWindow : Window
 
         if (choice == MessageBoxResult.OK)
         {
-            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            try
+            {
+                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Win32Exception)
+            {
+                MessageBox.Show(
+                    this,
+                    "Windows could not open that link.",
+                    "Unable to open link",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
     }
 

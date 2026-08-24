@@ -2,36 +2,49 @@ using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Markdig;
+using Markdig.Extensions.AutoIdentifiers;
+using Markdig.Syntax;
+using Markdig.Syntax.Inlines;
 
 namespace MdViewer.Core;
 
 public sealed class MarkdownRenderer
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
+        .UseAutoIdentifiers(AutoIdentifierOptions.GitHub)
+        .UseAutoLinks()
+        .UsePipeTables()
+        .UseGridTables()
+        .UseTaskLists()
+        .UseEmphasisExtras()
+        .UseListExtras()
+        .UseFootnotes()
+        .UseDefinitionLists()
+        .UseAbbreviations()
+        .UseCitations()
+        .UseMathematics()
+        .UseSmartyPants()
         .DisableHtml()
         .Build();
 
     private static readonly Regex ImageTagPattern = new(
         """<img\b[^>]*\balt="(?<alt>[^"]*)"[^>]*>""",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex LinkTargetPattern = new(
-        "href=\"(?<target>[^\"]*)\"",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
 
     private static readonly Regex WordPattern = new(
         @"[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*",
-        RegexOptions.CultureInvariant);
+        RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
 
     public RenderedMarkdown Render(string markdown, string title)
     {
         ArgumentNullException.ThrowIfNull(markdown);
         ArgumentNullException.ThrowIfNull(title);
 
-        var body = Markdig.Markdown.ToHtml(markdown, Pipeline);
+        var document = Markdig.Markdown.Parse(markdown, Pipeline);
+        SanitizeLinks(document);
+
+        var body = Markdig.Markdown.ToHtml(document, Pipeline);
         body = ImageTagPattern.Replace(body, ReplaceImage);
-        body = LinkTargetPattern.Replace(body, ReplaceLinkTarget);
 
         var encodedTitle = HtmlEncoder.Default.Encode(title);
         var html = $$"""
@@ -62,20 +75,40 @@ public sealed class MarkdownRenderer
         return $"<span class=\"blocked-image\" role=\"note\">{label}</span>";
     }
 
-    private static string ReplaceLinkTarget(Match match)
+    private static void SanitizeLinks(Markdig.Syntax.MarkdownDocument document)
     {
-        var encodedTarget = match.Groups["target"].Value;
-        var target = WebUtility.HtmlDecode(encodedTarget);
-        if (IsAllowedLink(target))
+        foreach (var link in document.Descendants<LinkInline>())
         {
-            return match.Value;
+            link.GetDynamicUrl = null;
+            if (link.IsImage)
+            {
+                link.Url = string.Empty;
+            }
+            else if (!IsAllowedLink(link.Url))
+            {
+                link.Url = "#md-viewer-blocked-link";
+                link.Title = "Blocked unsafe link";
+            }
         }
 
-        return "href=\"#\" data-blocked-link=\"true\"";
+        foreach (var autolink in document.Descendants<AutolinkInline>())
+        {
+            var target = autolink.IsEmail ? $"mailto:{autolink.Url}" : autolink.Url;
+            if (!IsAllowedLink(target))
+            {
+                autolink.Url = "#md-viewer-blocked-link";
+                autolink.IsEmail = false;
+            }
+        }
     }
 
-    private static bool IsAllowedLink(string target)
+    private static bool IsAllowedLink(string? target)
     {
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return false;
+        }
+
         if (target.StartsWith('#'))
         {
             return true;
@@ -141,6 +174,12 @@ public sealed class MarkdownRenderer
         h1, h2 { padding-bottom: .35em; border-bottom: 1px solid var(--border); }
         a { color: var(--accent); text-underline-offset: .18em; }
         a:hover { text-decoration-thickness: 2px; }
+        a[href="#md-viewer-blocked-link"] {
+          color: var(--muted);
+          cursor: not-allowed;
+          pointer-events: none;
+          text-decoration: line-through;
+        }
         p, ul, ol, blockquote, table, pre { margin: 0 0 1.15em; }
         blockquote {
           padding: .2em 1em;
@@ -164,7 +203,7 @@ public sealed class MarkdownRenderer
           border-radius: 10px;
         }
         pre code { padding: 0; border: 0; background: transparent; }
-        table { width: 100%; border-spacing: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; }
+        table { display: block; width: 100%; overflow-x: auto; border-spacing: 0; border: 1px solid var(--border); border-radius: 10px; }
         th, td { padding: 9px 13px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
         th { text-align: left; background: var(--code-bg); }
         tr:last-child td { border-bottom: 0; }
@@ -188,6 +227,10 @@ public sealed class MarkdownRenderer
         @media print {
           :root { --bg: #fff; --surface: #fff; --text: #111; --border: #ddd; --shadow: none; }
           .markdown-body { width: 100%; margin: 0; padding: 0; border: 0; }
+        }
+        @media (forced-colors: active) {
+          .markdown-body, code, pre, table, th, td, .blocked-image { border-color: CanvasText; }
+          a { color: LinkText; }
         }
         """;
 }
