@@ -1,0 +1,162 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="md-viewer"
+      Manufacturer="hoopdad"
+      Version="1.0.0"
+      Language="1033"
+      Scope="perUser"
+      InstallerVersion="500"
+      UpgradeCode="{7BD40288-83F8-4F30-94AF-C52A4BBEE23C}">
+    <SummaryInformation Description="Installs the md-viewer read-only Markdown viewer."/>
+    <MajorUpgrade DowngradeErrorMessage="A newer version of md-viewer is already installed."/>
+    <MediaTemplate EmbedCab="yes"/>
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="LocalProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="md-viewer"/>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="md-viewer"/>
+    </StandardDirectory>
+
+    <Feature Id="ProductFeature" Title="md-viewer" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles"/>
+      <ComponentRef Id="ShellIntegration"/>
+      <ComponentRef Id="StartMenuShortcut"/>
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\**\*.pdb"/>
+      </Files>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="ShellIntegration" Directory="INSTALLFOLDER" Guid="{C6F3A5E8-A132-46D9-9D83-5D53E3488C39}">
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\.md"
+          Value="md-viewer.Markdown"
+          Type="string"
+          KeyPath="yes"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\.markdown"
+          Value="md-viewer.Markdown"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\.md\OpenWithProgids"
+          Name="md-viewer.Markdown"
+          Value=""
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\.markdown\OpenWithProgids"
+          Name="md-viewer.Markdown"
+          Value=""
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\md-viewer.Markdown"
+          Value="Markdown Document"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\md-viewer.Markdown\DefaultIcon"
+          Value="&quot;[INSTALLFOLDER]md-viewer.exe&quot;,0"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\md-viewer.Markdown\shell\open\command"
+          Value="&quot;[INSTALLFOLDER]md-viewer.exe&quot; &quot;%1&quot;"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\SystemFileAssociations\.md\shell\md-viewer"
+          Name="MUIVerb"
+          Value="Open with md-viewer"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\SystemFileAssociations\.md\shell\md-viewer"
+          Name="Icon"
+          Value="&quot;[INSTALLFOLDER]md-viewer.exe&quot;"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\SystemFileAssociations\.md\shell\md-viewer\command"
+          Value="&quot;[INSTALLFOLDER]md-viewer.exe&quot; &quot;%1&quot;"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\SystemFileAssociations\.markdown\shell\md-viewer"
+          Name="MUIVerb"
+          Value="Open with md-viewer"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\SystemFileAssociations\.markdown\shell\md-viewer"
+          Name="Icon"
+          Value="&quot;[INSTALLFOLDER]md-viewer.exe&quot;"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\Classes\SystemFileAssociations\.markdown\shell\md-viewer\command"
+          Value="&quot;[INSTALLFOLDER]md-viewer.exe&quot; &quot;%1&quot;"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\md-viewer\Capabilities"
+          Name="ApplicationName"
+          Value="md-viewer"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\md-viewer\Capabilities"
+          Name="ApplicationDescription"
+          Value="A fast, secure, read-only Markdown viewer."
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\md-viewer\Capabilities\FileAssociations"
+          Name=".md"
+          Value="md-viewer.Markdown"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\md-viewer\Capabilities\FileAssociations"
+          Name=".markdown"
+          Value="md-viewer.Markdown"
+          Type="string"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\RegisteredApplications"
+          Name="md-viewer"
+          Value="Software\md-viewer\Capabilities"
+          Type="string"/>
+    </Component>
+
+    <Component Id="StartMenuShortcut" Directory="ApplicationProgramsFolder" Guid="{1E2F30E8-9656-4F55-B26A-4FB0F838C4CE}">
+      <Shortcut
+          Id="ApplicationStartMenuShortcut"
+          Name="md-viewer"
+          Description="Open Markdown files in read-only mode"
+          Target="[INSTALLFOLDER]md-viewer.exe"
+          WorkingDirectory="INSTALLFOLDER"/>
+      <RemoveFolder Id="RemoveApplicationProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\md-viewer"
+          Name="StartMenuShortcut"
+          Value="1"
+          Type="integer"
+          KeyPath="yes"/>
+    </Component>
+  </Fragment>
+</Wix>

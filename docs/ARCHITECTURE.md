@@ -12,7 +12,7 @@ application with exactly one quoted file path.
   to inert HTML with Markdig.
 - `MdViewer.App` hosts the generated document in a hardened WebView2 inside a
   native WPF shell.
-- `MdViewer.Installer` installs per-machine binaries and registers the ProgID,
+- `MdViewer.Installer` installs per-user binaries and registers the ProgID,
   Open With capability, and explicit Explorer context-menu verb.
 
 ## Rendering and trust boundary
