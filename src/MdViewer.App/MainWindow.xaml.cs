@@ -100,6 +100,7 @@ public partial class MainWindow : Window
             MetricsText.Text = $"{rendered.WordCount:N0} words  |  {FormatBytes(document.ByteLength)}";
             StatusText.Text = "Remote content blocked  |  Source is read-only";
             ReloadButton.IsEnabled = true;
+            OpenInEditorButton.IsEnabled = true;
             WelcomePanel.Visibility = Visibility.Collapsed;
             Viewer.Visibility = Visibility.Visible;
             _documentContent = Encoding.UTF8.GetBytes(rendered.Html);
@@ -140,6 +141,7 @@ public partial class MainWindow : Window
         DocumentPath.ToolTip = null;
         MetricsText.Text = string.Empty;
         ReloadButton.IsEnabled = false;
+        OpenInEditorButton.IsEnabled = false;
         Title = "md-viewer";
         Viewer.Visibility = Visibility.Collapsed;
         WelcomePanel.Visibility = Visibility.Visible;
@@ -172,11 +174,51 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnOpenInEditorClick(object sender, RoutedEventArgs e)
+    {
+        if (_currentFilePath is null)
+        {
+            return;
+        }
+
+        try
+        {
+            EditorLauncher.Open(_currentFilePath);
+            StatusText.Text = "Opened in editor";
+        }
+        catch (Win32Exception)
+        {
+            ShowEditorError();
+        }
+        catch (InvalidOperationException)
+        {
+            ShowEditorError();
+        }
+    }
+
+    private void ShowEditorError()
+    {
+        StatusText.Text = "Unable to open an editor";
+        MessageBox.Show(
+            this,
+            "Windows could not find an editor for Markdown or text files.",
+            "Unable to open editor",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
+    }
+
     private async void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.O && Keyboard.Modifiers == ModifierKeys.Control)
         {
             OnOpenClick(sender, e);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.E
+                 && Keyboard.Modifiers == ModifierKeys.Control
+                 && _currentFilePath is not null)
+        {
+            OnOpenInEditorClick(sender, e);
             e.Handled = true;
         }
         else if (e.Key == Key.F5 && _currentFilePath is not null)

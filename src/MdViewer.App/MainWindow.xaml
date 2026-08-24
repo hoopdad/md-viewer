@@ -11,6 +11,7 @@
         MinWidth="680"
         MinHeight="480"
         WindowStartupLocation="CenterScreen"
+        Icon="Assets/AppIcon.png"
         Background="#F7F8FA"
         FontFamily="Segoe UI Variable Text, Segoe UI"
         AllowDrop="True"
@@ -36,18 +37,10 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Width="38"
-                        Height="38"
-                        VerticalAlignment="Center"
-                        Background="#0969DA"
-                        CornerRadius="9">
-                    <TextBlock HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Foreground="White"
-                               FontSize="13"
-                               FontWeight="Bold"
-                               Text="MD"/>
-                </Border>
+                <Image Width="38"
+                       Height="38"
+                       VerticalAlignment="Center"
+                       Source="Assets/AppIcon.png"/>
 
                 <StackPanel Grid.Column="1"
                             Margin="13,0,16,0"
@@ -89,6 +82,12 @@
                             IsEnabled="False"
                             ToolTip="Reload from disk (F5)"
                             Content="Reload"/>
+                    <Button x:Name="OpenInEditorButton"
+                            Margin="0,0,8,0"
+                            Click="OnOpenInEditorClick"
+                            IsEnabled="False"
+                            ToolTip="Open in the default editor (Ctrl+E)"
+                            Content="Open in Editor"/>
                     <Button Click="OnOpenClick"
                             Style="{StaticResource PrimaryButtonStyle}"
                             ToolTip="Open a Markdown file (Ctrl+O)"
@@ -114,18 +113,10 @@
                         BorderThickness="1"
                         CornerRadius="18">
                     <StackPanel>
-                        <Border Width="64"
-                                Height="64"
-                                HorizontalAlignment="Center"
-                                Background="#EAF3FF"
-                                CornerRadius="16">
-                            <TextBlock HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="#0969DA"
-                                       FontSize="20"
-                                       FontWeight="Bold"
-                                       Text="MD"/>
-                        </Border>
+                        <Image Width="64"
+                               Height="64"
+                               HorizontalAlignment="Center"
+                               Source="Assets/AppIcon.png"/>
                         <TextBlock x:Name="WelcomeTitle"
                                    Margin="0,24,0,0"
                                    HorizontalAlignment="Center"

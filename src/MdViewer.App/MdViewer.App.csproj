@@ -8,13 +8,18 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="Assets\AppIcon.png" />
+  </ItemGroup>
+
   <PropertyGroup>
     <AssemblyName>md-viewer</AssemblyName>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.0</Version>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <Version>1.1.0</Version>
     <Authors>hoopdad</Authors>
     <Description>A fast, secure, read-only Markdown viewer for Windows.</Description>
   </PropertyGroup>

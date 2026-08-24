@@ -2,14 +2,18 @@
   <Package
       Name="md-viewer"
       Manufacturer="hoopdad"
-      Version="1.0.0"
+      Version="1.1.0"
       Language="1033"
       Scope="perUser"
       InstallerVersion="500"
       UpgradeCode="{7BD40288-83F8-4F30-94AF-C52A4BBEE23C}">
     <SummaryInformation Description="Installs the md-viewer read-only Markdown viewer."/>
-    <MajorUpgrade DowngradeErrorMessage="A newer version of md-viewer is already installed."/>
+    <MajorUpgrade
+        AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="A newer version of md-viewer is already installed."/>
     <MediaTemplate EmbedCab="yes"/>
+    <Icon Id="AppIcon.ico" SourceFile="$(var.ProjectDir)..\..\src\MdViewer.App\Assets\AppIcon.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico"/>
 
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="LocalProgramsFolder" Name="Programs">
