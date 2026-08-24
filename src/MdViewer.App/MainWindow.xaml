@@ -3,10 +3,191 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:MdViewer.App"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="md-viewer"
+        Width="1120"
+        Height="760"
+        MinWidth="680"
+        MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        Background="#F7F8FA"
+        FontFamily="Segoe UI Variable Text, Segoe UI"
+        AllowDrop="True"
+        Loaded="OnLoaded"
+        PreviewKeyDown="OnPreviewKeyDown"
+        DragOver="OnDragOver"
+        Drop="OnDrop">
+    <Grid Background="#F7F8FA">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="68"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
 
+        <Border Grid.Row="0"
+                Background="White"
+                BorderBrush="#D8DEE4"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="20,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Width="38"
+                        Height="38"
+                        VerticalAlignment="Center"
+                        Background="#0969DA"
+                        CornerRadius="9">
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="White"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Text="MD"/>
+                </Border>
+
+                <StackPanel Grid.Column="1"
+                            Margin="13,0,16,0"
+                            VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="DocumentTitle"
+                                   MaxWidth="650"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#24292F"
+                                   Text="md-viewer"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <Border Margin="10,0,0,0"
+                                Padding="7,2"
+                                VerticalAlignment="Center"
+                                Background="#EAF3FF"
+                                CornerRadius="9">
+                            <TextBlock Foreground="#0969DA"
+                                       FontSize="10"
+                                       FontWeight="Bold"
+                                       Text="READ ONLY"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock x:Name="DocumentPath"
+                               Margin="0,2,0,0"
+                               MaxWidth="720"
+                               Foreground="#6E7781"
+                               FontSize="12"
+                               Text="Open a Markdown file to begin"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="ReloadButton"
+                            Margin="0,0,8,0"
+                            Click="OnReloadClick"
+                            IsEnabled="False"
+                            ToolTip="Reload from disk (F5)"
+                            Content="Reload"/>
+                    <Button Click="OnOpenClick"
+                            Background="#0969DA"
+                            BorderBrush="#0969DA"
+                            Foreground="White"
+                            ToolTip="Open a Markdown file (Ctrl+O)"
+                            Content="Open file"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <wv2:WebView2 x:Name="Viewer"
+                          Visibility="Collapsed"
+                          DefaultBackgroundColor="#F7F8FA"/>
+
+            <Grid x:Name="WelcomePanel" Background="#F7F8FA">
+                <Border Width="520"
+                        MaxWidth="520"
+                        Margin="24"
+                        Padding="48"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Background="White"
+                        BorderBrush="#D8DEE4"
+                        BorderThickness="1"
+                        CornerRadius="18">
+                    <StackPanel>
+                        <Border Width="64"
+                                Height="64"
+                                HorizontalAlignment="Center"
+                                Background="#EAF3FF"
+                                CornerRadius="16">
+                            <TextBlock HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="#0969DA"
+                                       FontSize="20"
+                                       FontWeight="Bold"
+                                       Text="MD"/>
+                        </Border>
+                        <TextBlock x:Name="WelcomeTitle"
+                                   Margin="0,24,0,0"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#24292F"
+                                   FontSize="26"
+                                   FontWeight="SemiBold"
+                                   Text="Read Markdown beautifully"/>
+                        <TextBlock x:Name="WelcomeMessage"
+                                   Margin="0,10,0,0"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#57606A"
+                                   FontSize="14"
+                                   LineHeight="22"
+                                   Text="Open or drop a .md file here. Your document stays read-only, and remote content is blocked."
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"/>
+                        <Button Margin="0,28,0,0"
+                                HorizontalAlignment="Center"
+                                Click="OnOpenClick"
+                                Background="#0969DA"
+                                BorderBrush="#0969DA"
+                                Foreground="White"
+                                Content="Choose Markdown file"/>
+                        <TextBlock Margin="0,18,0,0"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#8C959F"
+                                   FontSize="12"
+                                   Text="Tip: press Ctrl+O or drag a file into this window"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border x:Name="BusyOverlay"
+                    Background="#80F7F8FA"
+                    Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ProgressBar Width="180" Height="4" IsIndeterminate="True"/>
+                    <TextBlock Margin="0,12,0,0"
+                               Foreground="#57606A"
+                               Text="Rendering Markdown..."/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Background="#F0F2F5"
+                BorderBrush="#D8DEE4"
+                BorderThickness="0,1,0,0">
+            <Grid Margin="16,0">
+                <TextBlock x:Name="StatusText"
+                           VerticalAlignment="Center"
+                           Foreground="#6E7781"
+                           FontSize="11"
+                           Text="Ready"/>
+                <TextBlock x:Name="MetricsText"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Foreground="#6E7781"
+                           FontSize="11"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

@@ -1,13 +1,17 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
+using MdViewer.Core;
 
 namespace MdViewer.App;
 
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
 public partial class App : Application
 {
-}
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
 
+        var request = LaunchRequest.Parse(e.Args);
+        var window = new MainWindow(request.FilePath, request.Error);
+        MainWindow = window;
+        window.Show();
+    }
+}
