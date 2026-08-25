@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\AppIcon.png" />
+    <Resource Include="Assets\AppIcon.ico" />
   </ItemGroup>
 
   <PropertyGroup>

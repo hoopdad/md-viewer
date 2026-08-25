@@ -27,6 +27,16 @@ Build the self-contained x64 Windows installer:
 .\scripts\Build-Installer.ps1
 ```
 
+The app icon is maintained as an SVG master, a 512 px PNG export, and a Windows
+ICO with hand-tuned 16, 20, and 24 px frames. After changing the SVG, export it
+to `src\MdViewer.App\Assets\AppIcon.png`, then install Pillow and rebuild the
+ICO:
+
+```powershell
+python -m pip install Pillow
+python .\scripts\Build-AppIcon.py
+```
+
 The MSI installs per-user, registers md-viewer for `.md` and `.markdown`,
 creates an explicit **Open with md-viewer** Explorer action, and registers the
 application with Windows Default Apps. Windows may preserve an existing

@@ -11,7 +11,7 @@
         MinWidth="680"
         MinHeight="480"
         WindowStartupLocation="CenterScreen"
-        Icon="Assets/AppIcon.png"
+        Icon="Assets/AppIcon.ico"
         Background="#F7F8FA"
         FontFamily="Segoe UI Variable Text, Segoe UI"
         AllowDrop="True"
@@ -40,7 +40,7 @@
                 <Image Width="38"
                        Height="38"
                        VerticalAlignment="Center"
-                       Source="Assets/AppIcon.png"/>
+                       Source="{StaticResource AppIconDrawing}"/>
 
                 <StackPanel Grid.Column="1"
                             Margin="13,0,16,0"
@@ -120,7 +120,7 @@
                         <Image Width="64"
                                Height="64"
                                HorizontalAlignment="Center"
-                               Source="Assets/AppIcon.png"/>
+                               Source="{StaticResource AppIconDrawing}"/>
                         <TextBlock x:Name="WelcomeTitle"
                                    Margin="0,24,0,0"
                                    HorizontalAlignment="Center"

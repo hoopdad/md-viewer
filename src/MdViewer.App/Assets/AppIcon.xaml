@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DrawingImage x:Key="AppIconDrawing">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Geometry="M132,20 H380 C442,20 492,70 492,132 V380 C492,442 442,492 380,492 H132 C70,492 20,442 20,380 V132 C20,70 70,20 132,20 Z">
+                    <GeometryDrawing.Brush>
+                        <LinearGradientBrush StartPoint="0.12,0.06" EndPoint="0.88,0.94">
+                            <GradientStop Color="#218BFF" Offset="0"/>
+                            <GradientStop Color="#0969DA" Offset="0.52"/>
+                            <GradientStop Color="#033D8B" Offset="1"/>
+                        </LinearGradientBrush>
+                    </GeometryDrawing.Brush>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1FFFFFFF"
+                                 Geometry="M72,172 C114,86 201,45 310,45 C377,45 433,67 474,109 C428,51 358,20 256,20 C126,20 38,88 20,196 V271 C28,235 44,202 72,172 Z"/>
+                <GeometryDrawing Brush="#33002B63"
+                                 Geometry="M163,111 H302 L375,184 V402 C375,417 363,429 348,429 H163 C148,429 136,417 136,402 V138 C136,123 148,111 163,111 Z"/>
+                <GeometryDrawing Geometry="M154,104 H293 L366,177 V395 C366,410 354,422 339,422 H154 C139,422 127,410 127,395 V131 C127,116 139,104 154,104 Z">
+                    <GeometryDrawing.Brush>
+                        <LinearGradientBrush StartPoint="0.3,0" EndPoint="0.7,1">
+                            <GradientStop Color="#FFFFFF" Offset="0"/>
+                            <GradientStop Color="#EAF3FF" Offset="1"/>
+                        </LinearGradientBrush>
+                    </GeometryDrawing.Brush>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#B6D7FF"
+                                 Geometry="M293,104 V158 C293,169 302,178 313,178 H366 Z"/>
+                <GeometryDrawing Brush="#063B7A"
+                                 Geometry="M174,302 V209 H199 L246,268 L293,209 H318 V302 H291 V250 L246,305 L201,250 V302 Z"/>
+                <GeometryDrawing Geometry="M246,322 V377 M246,377 L221,352 M246,377 L271,352">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#0969DA"
+                             Thickness="18"
+                             StartLineCap="Round"
+                             EndLineCap="Round"
+                             LineJoin="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+</ResourceDictionary>
