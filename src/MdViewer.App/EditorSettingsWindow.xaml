@@ -1,0 +1,71 @@
+<Window x:Class="MdViewer.App.EditorSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Editor settings"
+        Width="560"
+        Height="270"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#F7F8FA"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Foreground="#24292F"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Text="Choose a Markdown editor"/>
+        <TextBlock Grid.Row="1"
+                   Margin="0,6,0,18"
+                   Foreground="#57606A"
+                   Text="This editor is used when you select Open in Editor."/>
+
+        <RadioButton x:Name="WindowsDefaultOption"
+                     Grid.Row="2"
+                     Margin="0,0,0,12"
+                     Checked="OnEditorOptionChanged"
+                     Content="Use Windows default editor"/>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <RadioButton x:Name="CustomEditorOption"
+                         Margin="0,0,10,0"
+                         VerticalAlignment="Center"
+                         Checked="OnEditorOptionChanged"
+                         Content="Use EXE"/>
+            <TextBox x:Name="EditorPathTextBox"
+                     Grid.Column="1"
+                     Margin="0,0,8,0"
+                     Padding="8,6"
+                     VerticalContentAlignment="Center"/>
+            <Button x:Name="BrowseButton"
+                    Grid.Column="2"
+                    Padding="14,7"
+                    Click="OnBrowseClick"
+                    Content="Browse..."/>
+        </Grid>
+
+        <StackPanel Grid.Row="4"
+                    Margin="0,22,0,0"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+            <Button Margin="0,0,8,0"
+                    IsCancel="True"
+                    Content="Cancel"/>
+            <Button Click="OnSaveClick"
+                    IsDefault="True"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Content="Save"/>
+        </StackPanel>
+    </Grid>
+</Window>

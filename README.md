@@ -7,6 +7,8 @@ A fast, read-only Markdown viewer for Windows.
 - Open `.md` files directly from File Explorer.
 - Render CommonMark and popular GitHub-flavored Markdown conventions.
 - Never edit or save the source file.
+- Open a document in a user-selected editor EXE, with Windows file
+  associations as the default.
 - Block raw HTML, scripts, remote images, local-resource reads, and unsafe URI
   schemes by default.
 - Provide an installer with Windows Open With and context-menu integration.

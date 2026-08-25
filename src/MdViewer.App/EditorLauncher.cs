@@ -11,9 +11,15 @@ internal static class EditorLauncher
     private const uint Success = 0;
     private const uint NoAssociation = 0x80070483;
 
-    public static void Open(string filePath)
+    public static void Open(string filePath, string? editorPath = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        if (editorPath is not null)
+        {
+            OpenExecutable(editorPath, filePath);
+            return;
+        }
 
         if (TryOpenMarkdownEditor(filePath))
         {
@@ -24,7 +30,17 @@ internal static class EditorLauncher
             ?? QueryAssociatedExecutable(".txt", "open")
             ?? throw new InvalidOperationException("No text editor is registered.");
 
-        var process = Process.Start(new ProcessStartInfo(textEditor)
+        OpenExecutable(textEditor, filePath);
+    }
+
+    private static void OpenExecutable(string executablePath, string filePath)
+    {
+        if (!File.Exists(executablePath))
+        {
+            throw new FileNotFoundException("The selected editor executable was not found.", executablePath);
+        }
+
+        var process = Process.Start(new ProcessStartInfo(executablePath)
         {
             UseShellExecute = false,
             ArgumentList = { filePath }

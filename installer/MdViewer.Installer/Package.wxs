@@ -2,7 +2,7 @@
   <Package
       Name="md-viewer"
       Manufacturer="hoopdad"
-      Version="1.1.0"
+      Version="1.2.0"
       Language="1033"
       Scope="perUser"
       InstallerVersion="500"

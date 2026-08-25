@@ -86,8 +86,12 @@
                             Margin="0,0,8,0"
                             Click="OnOpenInEditorClick"
                             IsEnabled="False"
-                            ToolTip="Open in the default editor (Ctrl+E)"
+                            ToolTip="Open in the selected editor (Ctrl+E)"
                             Content="Open in Editor"/>
+                    <Button Margin="0,0,8,0"
+                            Click="OnEditorSettingsClick"
+                            ToolTip="Choose which editor EXE to use"
+                            Content="Editor settings"/>
                     <Button Click="OnOpenClick"
                             Style="{StaticResource PrimaryButtonStyle}"
                             ToolTip="Open a Markdown file (Ctrl+O)"

@@ -15,6 +15,10 @@ public partial class MainWindow : Window
     private const string DocumentUri = "https://md-viewer.local/document";
 
     private readonly MarkdownRenderer _renderer = new();
+    private readonly EditorSettingsStore _editorSettings = new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "md-viewer",
+        "settings.json"));
     private readonly string? _initialFilePath;
     private readonly string? _initialError;
     private string? _currentFilePath;
@@ -183,7 +187,7 @@ public partial class MainWindow : Window
 
         try
         {
-            EditorLauncher.Open(_currentFilePath);
+            EditorLauncher.Open(_currentFilePath, LoadEditorPath());
             StatusText.Text = "Opened in editor";
         }
         catch (Win32Exception)
@@ -194,6 +198,72 @@ public partial class MainWindow : Window
         {
             ShowEditorError();
         }
+        catch (IOException)
+        {
+            ShowEditorError();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ShowEditorError();
+        }
+    }
+
+    private void OnEditorSettingsClick(object sender, RoutedEventArgs e)
+    {
+        string? editorPath;
+        try
+        {
+            editorPath = LoadEditorPath();
+        }
+        catch (IOException)
+        {
+            editorPath = null;
+            StatusText.Text = "Editor settings are invalid";
+            MessageBox.Show(
+                this,
+                "The saved editor setting could not be read. Choose an editor or save the Windows default to replace it.",
+                "Unable to read editor settings",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
+        var dialog = new EditorSettingsWindow(editorPath) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            _editorSettings.SaveEditorPath(dialog.SelectedEditorPath);
+            StatusText.Text = dialog.SelectedEditorPath is null
+                ? "Using Windows default editor"
+                : $"Editor set to {Path.GetFileName(dialog.SelectedEditorPath)}";
+        }
+        catch (IOException)
+        {
+            ShowEditorSettingsError();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ShowEditorSettingsError();
+        }
+    }
+
+    private string? LoadEditorPath()
+    {
+        return _editorSettings.LoadEditorPath();
+    }
+
+    private void ShowEditorSettingsError()
+    {
+        StatusText.Text = "Unable to save editor settings";
+        MessageBox.Show(
+            this,
+            "md-viewer could not read or save your editor settings.",
+            "Unable to update editor",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
     }
 
     private void ShowEditorError()
@@ -201,7 +271,7 @@ public partial class MainWindow : Window
         StatusText.Text = "Unable to open an editor";
         MessageBox.Show(
             this,
-            "Windows could not find an editor for Markdown or text files.",
+            "Windows could not start the selected editor. Choose another EXE in Editor settings, or use the Windows default.",
             "Unable to open editor",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
