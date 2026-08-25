@@ -6,8 +6,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Assets/AppIcon.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-        <Style TargetType="Button">
+            <Style TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Padding" Value="16,9"/>
@@ -46,8 +45,8 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>
-        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            </Style>
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="#0969DA"/>
             <Setter Property="BorderBrush" Value="#0969DA"/>
             <Setter Property="Foreground" Value="White"/>
@@ -77,6 +76,7 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>
+            </Style>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
