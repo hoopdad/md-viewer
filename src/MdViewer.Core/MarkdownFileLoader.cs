@@ -46,15 +46,32 @@ public static class MarkdownFileLoader
 
     private static string? FindTitle(string markdown)
     {
-        using var reader = new StringReader(markdown);
-        while (reader.ReadLine() is { } line)
+        var remaining = markdown.AsSpan();
+        while (!remaining.IsEmpty)
         {
+            var lineBreak = remaining.IndexOfAny('\r', '\n');
+            var line = lineBreak < 0 ? remaining : remaining[..lineBreak];
             var trimmed = line.Trim();
             if (trimmed.StartsWith("# ", StringComparison.Ordinal))
             {
                 var title = trimmed[2..].Trim();
-                return title.Length == 0 ? null : title;
+                return title.IsEmpty ? null : title.ToString();
             }
+
+            if (lineBreak < 0)
+            {
+                break;
+            }
+
+            var consumed = lineBreak + 1;
+            if (remaining[lineBreak] == '\r'
+                && consumed < remaining.Length
+                && remaining[consumed] == '\n')
+            {
+                consumed++;
+            }
+
+            remaining = remaining[consumed..];
         }
 
         return null;

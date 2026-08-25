@@ -16,6 +16,8 @@ dotnet publish $appProject `
     --self-contained true `
     --output $publishDirectory `
     -p:PublishSingleFile=false `
+    -p:PublishReadyToRun=true `
+    -p:PublishReadyToRunComposite=true `
     -p:DebugSymbols=false `
     -p:DebugType=None
 

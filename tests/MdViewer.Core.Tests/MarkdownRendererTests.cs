@@ -58,6 +58,15 @@ public sealed class MarkdownRendererTests
         Assert.DoesNotContain("file://server", result.Html);
     }
 
+    [Fact]
+    public void Render_encodes_blocked_image_alt_text()
+    {
+        var result = _renderer.Render("![<unsafe>](https://example.com/image.png)", "Images");
+
+        Assert.Contains("Image blocked: &lt;unsafe&gt;", result.Html);
+        Assert.DoesNotContain("<unsafe>", result.Html);
+    }
+
     [Theory]
     [InlineData("javascript:alert(1)")]
     [InlineData("file:///C:/Windows/win.ini")]
@@ -93,6 +102,18 @@ public sealed class MarkdownRendererTests
         Assert.Contains("A &lt;title&gt;", result.Html);
         Assert.DoesNotContain("<script", result.Html, StringComparison.OrdinalIgnoreCase);
         Assert.True(result.WordCount > 0);
+    }
+
+    [Theory]
+    [InlineData("one two three", 3)]
+    [InlineData("don't re-enter it", 3)]
+    [InlineData("stop- start", 2)]
+    [InlineData("Привет 世界 123", 3)]
+    public void Render_counts_words_without_allocating_regex_matches(string markdown, int expected)
+    {
+        var result = _renderer.Render(markdown, "Words");
+
+        Assert.Equal(expected, result.WordCount);
     }
 
     [Fact]

@@ -34,6 +34,14 @@ public partial class MainWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Task<(MarkdownDocument Document, RenderedMarkdown Rendered)>? initialLoad = null;
+        if (_initialError is null && _initialFilePath is not null)
+        {
+            BusyOverlay.Visibility = Visibility.Visible;
+            StatusText.Text = "Opening...";
+            initialLoad = LoadAndRenderAsync(_initialFilePath);
+        }
+
         try
         {
             await InitializeWebViewAsync();
@@ -52,7 +60,7 @@ public partial class MainWindow : Window
         }
         else if (_initialFilePath is not null)
         {
-            await LoadFileAsync(_initialFilePath);
+            await LoadFileAsync(_initialFilePath, initialLoad);
         }
     }
 
@@ -86,15 +94,16 @@ public partial class MainWindow : Window
         _webViewReady = true;
     }
 
-    private async Task LoadFileAsync(string filePath)
+    private async Task LoadFileAsync(
+        string filePath,
+        Task<(MarkdownDocument Document, RenderedMarkdown Rendered)>? pendingLoad = null)
     {
         BusyOverlay.Visibility = Visibility.Visible;
         StatusText.Text = "Opening...";
 
         try
         {
-            var document = await Task.Run(() => MarkdownFileLoader.Load(filePath));
-            var rendered = await Task.Run(() => _renderer.Render(document.Markdown, document.DisplayName));
+            var (document, rendered) = await (pendingLoad ?? LoadAndRenderAsync(filePath));
 
             _currentFilePath = document.FilePath;
             DocumentTitle.Text = document.DisplayName;
@@ -136,8 +145,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private Task<(MarkdownDocument Document, RenderedMarkdown Rendered)> LoadAndRenderAsync(string filePath) =>
+        Task.Run(() =>
+        {
+            var document = MarkdownFileLoader.Load(filePath);
+            var rendered = _renderer.Render(document.Markdown, document.DisplayName);
+            return (document, rendered);
+        });
+
     private void ShowWelcomeError(string title, string message)
     {
+        BusyOverlay.Visibility = Visibility.Collapsed;
         _currentFilePath = null;
         _documentContent = null;
         DocumentTitle.Text = "md-viewer";

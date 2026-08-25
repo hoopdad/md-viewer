@@ -41,7 +41,18 @@ open Default Apps so the user can confirm the default when Windows requires it.
 
 ## Performance
 
-The parser pipeline is created once, input is read sequentially, rendering is
-performed from an in-memory snapshot, and the WebView receives one static HTML
-document. No network resources, plugins, syntax-highlighting scripts, or
+The parser pipeline is created once, input is read sequentially, and rendering
+is performed from an in-memory snapshot. On shell launch, file parsing runs in
+parallel with WebView2 initialization. Title and word-count scans are
+allocation-free, image placeholders are emitted while walking the parsed
+document, and the WebView receives one static HTML document. Installed binaries
+are published with composite ReadyToRun compilation to reduce managed startup
+JIT work. No network resources, plugins, syntax-highlighting scripts, or
 document-selected extensions are loaded.
+
+WebView2 process startup and HTML layout dominate normal document-open latency.
+Rewriting the parser in Rust, C, or assembly would add interop and deployment
+cost without addressing that bottleneck. Native code would only be justified by
+profiling unusually large documents that spend most of their time inside the
+Markdown parser; the current 8 MiB input bound and Markdig pipeline do not make
+that tradeoff worthwhile.

@@ -44,6 +44,16 @@ public sealed class MarkdownFileLoaderTests
         }
     }
 
+    [Fact]
+    public void Load_finds_a_title_after_mixed_line_endings()
+    {
+        using var file = TemporaryMarkdownFile.Create("intro\r\nmore\n\r  # Fast title  \rbody");
+
+        var document = MarkdownFileLoader.Load(file.Path);
+
+        Assert.Equal("Fast title", document.DisplayName);
+    }
+
     private sealed class TemporaryMarkdownFile : IDisposable
     {
         private TemporaryMarkdownFile(string path) => Path = path;

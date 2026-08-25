@@ -1,6 +1,6 @@
-using System.Net;
+using System.Globalization;
+using System.Text;
 using System.Text.Encodings.Web;
-using System.Text.RegularExpressions;
 using Markdig;
 using Markdig.Extensions.AutoIdentifiers;
 using Markdig.Syntax;
@@ -27,14 +27,6 @@ public sealed class MarkdownRenderer
         .DisableHtml()
         .Build();
 
-    private static readonly Regex ImageTagPattern = new(
-        """<img\b[^>]*\balt="(?<alt>[^"]*)"[^>]*>""",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-
-    private static readonly Regex WordPattern = new(
-        @"[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*",
-        RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-
     public RenderedMarkdown Render(string markdown, string title)
     {
         ArgumentNullException.ThrowIfNull(markdown);
@@ -44,7 +36,6 @@ public sealed class MarkdownRenderer
         SanitizeLinks(document);
 
         var body = Markdig.Markdown.ToHtml(document, Pipeline);
-        body = ImageTagPattern.Replace(body, ReplaceImage);
 
         var encodedTitle = HtmlEncoder.Default.Encode(title);
         var html = $$"""
@@ -63,31 +54,36 @@ public sealed class MarkdownRenderer
             </html>
             """;
 
-        return new RenderedMarkdown(html, WordPattern.Matches(markdown).Count);
-    }
-
-    private static string ReplaceImage(Match match)
-    {
-        var alt = match.Groups["alt"].Value;
-        var label = string.IsNullOrWhiteSpace(WebUtility.HtmlDecode(alt))
-            ? "Image blocked"
-            : $"Image blocked: {alt}";
-        return $"<span class=\"blocked-image\" role=\"note\">{label}</span>";
+        return new RenderedMarkdown(html, CountWords(markdown));
     }
 
     private static void SanitizeLinks(Markdig.Syntax.MarkdownDocument document)
     {
+        List<LinkInline>? images = null;
         foreach (var link in document.Descendants<LinkInline>())
         {
             link.GetDynamicUrl = null;
             if (link.IsImage)
             {
-                link.Url = string.Empty;
+                (images ??= []).Add(link);
             }
             else if (!IsAllowedLink(link.Url))
             {
                 link.Url = "#md-viewer-blocked-link";
                 link.Title = "Blocked unsafe link";
+            }
+        }
+
+        if (images is not null)
+        {
+            foreach (var image in images)
+            {
+                var alt = GetInlineText(image);
+                var label = string.IsNullOrWhiteSpace(alt)
+                    ? "Image blocked"
+                    : $"Image blocked: {alt}";
+                var placeholder = $"<span class=\"blocked-image\" role=\"note\">{HtmlEncoder.Default.Encode(label)}</span>";
+                image.ReplaceBy(new HtmlInline(placeholder));
             }
         }
 
@@ -117,6 +113,100 @@ public sealed class MarkdownRenderer
         return Uri.TryCreate(target, UriKind.Absolute, out var uri)
             && uri.Scheme is "https" or "http" or "mailto";
     }
+
+    private static string GetInlineText(ContainerInline container)
+    {
+        var text = new StringBuilder();
+        AppendInlineText(container.FirstChild, text);
+        return text.ToString();
+    }
+
+    private static void AppendInlineText(Inline? inline, StringBuilder text)
+    {
+        while (inline is not null)
+        {
+            switch (inline)
+            {
+                case LiteralInline literal:
+                    text.Append(literal.Content.AsSpan());
+                    break;
+                case CodeInline code:
+                    text.Append(code.Content);
+                    break;
+                case HtmlEntityInline entity:
+                    text.Append(entity.Transcoded.AsSpan());
+                    break;
+                case LineBreakInline:
+                    text.Append(' ');
+                    break;
+                case ContainerInline nested:
+                    AppendInlineText(nested.FirstChild, text);
+                    break;
+            }
+
+            inline = inline.NextSibling;
+        }
+    }
+
+    private static int CountWords(string text)
+    {
+        var count = 0;
+        var index = 0;
+
+        while (index < text.Length)
+        {
+            if (!IsWordCharacter(text, index))
+            {
+                index++;
+                continue;
+            }
+
+            count++;
+            index += CharacterLength(text, index);
+
+            while (index < text.Length)
+            {
+                if (IsWordCharacter(text, index))
+                {
+                    index += CharacterLength(text, index);
+                    continue;
+                }
+
+                if (IsWordConnector(text[index])
+                    && index + 1 < text.Length
+                    && IsWordCharacter(text, index + 1))
+                {
+                    index++;
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+        return count;
+    }
+
+    private static bool IsWordCharacter(string text, int index) =>
+        char.GetUnicodeCategory(text, index) is
+            UnicodeCategory.UppercaseLetter or
+            UnicodeCategory.LowercaseLetter or
+            UnicodeCategory.TitlecaseLetter or
+            UnicodeCategory.ModifierLetter or
+            UnicodeCategory.OtherLetter or
+            UnicodeCategory.DecimalDigitNumber or
+            UnicodeCategory.LetterNumber or
+            UnicodeCategory.OtherNumber;
+
+    private static int CharacterLength(string text, int index) =>
+        char.IsHighSurrogate(text[index])
+        && index + 1 < text.Length
+        && char.IsLowSurrogate(text[index + 1])
+            ? 2
+            : 1;
+
+    private static bool IsWordConnector(char character) =>
+        character is '\'' or '\u2019' or '-';
 
     private const string Styles = """
         :root {
