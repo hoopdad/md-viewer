@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private readonly string? _initialError;
     private string? _currentFilePath;
     private byte[]? _documentContent;
+    private IReadOnlyDictionary<string, RenderedImage> _documentImages =
+        new Dictionary<string, RenderedImage>();
     private bool _webViewReady;
 
     public MainWindow(string? initialFilePath, string? initialError)
@@ -117,6 +119,7 @@ public partial class MainWindow : Window
             WelcomePanel.Visibility = Visibility.Collapsed;
             Viewer.Visibility = Visibility.Visible;
             _documentContent = Encoding.UTF8.GetBytes(rendered.Html);
+            _documentImages = rendered.Images;
             Viewer.CoreWebView2.Navigate(DocumentUri);
         }
         catch (MarkdownFileTooLargeException exception)
@@ -149,7 +152,10 @@ public partial class MainWindow : Window
         Task.Run(() =>
         {
             var document = MarkdownFileLoader.Load(filePath);
-            var rendered = _renderer.Render(document.Markdown, document.DisplayName);
+            var rendered = _renderer.Render(
+                document.Markdown,
+                document.DisplayName,
+                document.FilePath);
             return (document, rendered);
         });
 
@@ -158,6 +164,7 @@ public partial class MainWindow : Window
         BusyOverlay.Visibility = Visibility.Collapsed;
         _currentFilePath = null;
         _documentContent = null;
+        _documentImages = new Dictionary<string, RenderedImage>();
         DocumentTitle.Text = "md-viewer";
         DocumentPath.Text = "Open a Markdown file to begin";
         DocumentPath.ToolTip = null;
@@ -394,9 +401,45 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.Request.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
-            || e.Request.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase))
+        const string imageUriPrefix = "https://md-viewer.local/assets/";
+        if (e.Request.Uri.StartsWith(imageUriPrefix, StringComparison.OrdinalIgnoreCase))
         {
+            var imageId = e.Request.Uri[imageUriPrefix.Length..];
+            if (_documentImages.TryGetValue(imageId, out var image))
+            {
+                try
+                {
+                    var stream = new FileStream(
+                        image.FilePath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.ReadWrite | FileShare.Delete,
+                        bufferSize: 64 * 1024,
+                        FileOptions.SequentialScan);
+                    e.Response = Viewer.CoreWebView2.Environment.CreateWebResourceResponse(
+                        stream,
+                        200,
+                        "OK",
+                        $"Content-Type: {image.ContentType}\r\n"
+                        + "Cache-Control: no-store\r\n"
+                        + "X-Content-Type-Options: nosniff");
+                    return;
+                }
+                catch (IOException)
+                {
+                    StatusText.Text = "Unable to load a local image";
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    StatusText.Text = "Unable to load a local image";
+                }
+            }
+
+            e.Response = Viewer.CoreWebView2.Environment.CreateWebResourceResponse(
+                null,
+                404,
+                "Image not found",
+                "Content-Type: text/plain\r\nX-Content-Type-Options: nosniff");
             return;
         }
 

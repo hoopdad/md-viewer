@@ -9,8 +9,10 @@ A fast, read-only Markdown viewer for Windows.
 - Never edit or save the source file.
 - Open a document in a user-selected editor EXE, with Windows file
   associations as the default.
-- Block raw HTML, scripts, remote images, local-resource reads, and unsafe URI
-  schemes by default.
+- Block raw HTML, scripts, remote images, local resources outside the document
+  tree, and unsafe URI schemes by default.
+- Lazily display relative local PNG, JPEG, GIF, WebP, and SVG images, including
+  narrowly sanitized HTML `<img>` elements used by GitHub READMEs.
 - Provide an installer with Windows Open With and context-menu integration.
 
 ## Build

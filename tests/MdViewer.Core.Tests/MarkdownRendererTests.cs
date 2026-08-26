@@ -59,6 +59,71 @@ public sealed class MarkdownRendererTests
     }
 
     [Fact]
+    public void Render_supports_relative_local_markdown_images()
+    {
+        using var directory = new TemporaryDirectory();
+        var markdownPath = Path.Combine(directory.Path, "README.md");
+        var imagePath = Path.Combine(directory.Path, "docs", "images", "yogi.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(imagePath)!);
+        File.WriteAllBytes(imagePath, [0x89, 0x50, 0x4e, 0x47]);
+
+        var result = _renderer.Render(
+            "![Yogi](docs/images/yogi.png \"Mascot\")",
+            "Images",
+            markdownPath);
+
+        var image = Assert.Single(result.Images);
+        Assert.Equal(imagePath, image.Value.FilePath);
+        Assert.Equal("image/png", image.Value.ContentType);
+        Assert.Contains($"src=\"https://md-viewer.local/assets/{image.Key}\"", result.Html);
+        Assert.Contains("alt=\"Yogi\"", result.Html);
+        Assert.Contains("title=\"Mascot\"", result.Html);
+        Assert.Contains("loading=\"lazy\"", result.Html);
+        Assert.Contains("decoding=\"async\"", result.Html);
+    }
+
+    [Fact]
+    public void Render_supports_sanitized_raw_html_images()
+    {
+        using var directory = new TemporaryDirectory();
+        var markdownPath = Path.Combine(directory.Path, "README.md");
+        var imagePath = Path.Combine(directory.Path, "image.webp");
+        File.WriteAllBytes(imagePath, [0x52, 0x49, 0x46, 0x46]);
+
+        var result = _renderer.Render(
+            """<img style="margin: 30px" src="image.webp" alt="Demo" width="640" height="480" onerror="alert(1)">""",
+            "Images",
+            markdownPath);
+
+        Assert.Single(result.Images);
+        Assert.Contains("<img src=\"https://md-viewer.local/assets/0\"", result.Html);
+        Assert.Contains("alt=\"Demo\"", result.Html);
+        Assert.Contains("width=\"640\"", result.Html);
+        Assert.Contains("height=\"480\"", result.Html);
+        Assert.DoesNotContain("style=", result.Html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onerror", result.Html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("../outside.png")]
+    [InlineData("C:/Windows/image.png")]
+    [InlineData("\\\\server\\share\\image.png")]
+    [InlineData("https://example.com/image.png")]
+    [InlineData("image.bmp")]
+    public void Render_blocks_images_outside_the_document_tree_or_unsupported(
+        string target)
+    {
+        using var directory = new TemporaryDirectory();
+        var markdownPath = Path.Combine(directory.Path, "README.md");
+
+        var result = _renderer.Render($"![unsafe]({target})", "Images", markdownPath);
+
+        Assert.Empty(result.Images);
+        Assert.DoesNotContain("<img", result.Html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Image blocked: unsafe", result.Html);
+    }
+
+    [Fact]
     public void Render_encodes_blocked_image_alt_text()
     {
         var result = _renderer.Render("![<unsafe>](https://example.com/image.png)", "Images");
@@ -154,5 +219,20 @@ public sealed class MarkdownRendererTests
         Assert.Contains("<dl", result.Html);
         Assert.Contains("class=\"footnotes\"", result.Html);
         Assert.Contains("href=\"https://example.com\"", result.Html);
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        public TemporaryDirectory()
+        {
+            Path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                $"md-viewer-tests-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(Path);
+        }
+
+        public string Path { get; }
+
+        public void Dispose() => Directory.Delete(Path, recursive: true);
     }
 }

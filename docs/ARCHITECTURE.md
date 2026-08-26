@@ -20,9 +20,15 @@ application with exactly one quoted file path.
 Markdown files are untrusted input.
 
 1. Files are opened once with `FileAccess.Read` and a maximum size of 8 MiB.
-2. Raw HTML is disabled before Markdown rendering.
-3. Images are replaced with non-networked placeholders. This prevents tracking
-   pixels, SMB credential leakage, and reads of neighboring local files.
+2. Raw HTML is disabled before Markdown rendering. Exact HTML `<img>` elements
+   receive narrow compatibility handling; only `src`, `alt`, `title`, `width`,
+   and `height` are considered, and arbitrary styles and event handlers remain
+   disabled.
+3. Relative PNG, JPEG, GIF, WebP, and SVG images inside the Markdown document's
+   directory tree are mapped to opaque same-origin URLs and streamed on demand.
+   Remote, absolute, UNC, unsupported, missing, and directory-escaping images
+   become inert placeholders. This prevents tracking pixels and SMB credential
+   leakage while supporting repository-local documentation assets.
 4. Only `https`, `http`, `mailto`, and in-document fragment links survive
    rendering. All other targets become inert.
 5. Generated HTML carries a deny-by-default Content Security Policy.
@@ -44,11 +50,13 @@ open Default Apps so the user can confirm the default when Windows requires it.
 The parser pipeline is created once, input is read sequentially, and rendering
 is performed from an in-memory snapshot. On shell launch, file parsing runs in
 parallel with WebView2 initialization. Title and word-count scans are
-allocation-free, image placeholders are emitted while walking the parsed
-document, and the WebView receives one static HTML document. Installed binaries
-are published with composite ReadyToRun compilation to reduce managed startup
-JIT work. No network resources, plugins, syntax-highlighting scripts, or
-document-selected extensions are loaded.
+allocation-free, image URLs are resolved while walking the parsed document, and
+the WebView receives one static HTML document. Local images use native lazy
+loading and asynchronous decoding, remain out of the initial HTML payload, and
+are streamed only when WebView2 requests them. Installed binaries are published
+with composite ReadyToRun compilation to reduce managed startup JIT work. No
+network resources, plugins, syntax-highlighting scripts, or document-selected
+extensions are loaded.
 
 WebView2 process startup and HTML layout dominate normal document-open latency.
 Rewriting the parser in Rust, C, or assembly would add interop and deployment
