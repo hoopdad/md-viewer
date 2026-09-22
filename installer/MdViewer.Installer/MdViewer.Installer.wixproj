@@ -1,10 +1,10 @@
 <Project Sdk="WixToolset.Sdk/5.0.2">
   <PropertyGroup>
-    <OutputName>md-viewer-setup</OutputName>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <InstallerPlatform Condition="'$(InstallerPlatform)' == ''">$(Platform)</InstallerPlatform>
+    <OutputName Condition="'$(OutputName)' == ''">md-viewer-setup-$(InstallerPlatform)</OutputName>
     <OutputType>Package</OutputType>
-    <Platform>x64</Platform>
-    <InstallerPlatform>x64</InstallerPlatform>
-    <PublishDir>$(MSBuildThisFileDirectory)..\..\artifacts\publish\win-x64</PublishDir>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\publish\win-$(InstallerPlatform)</PublishDir>
     <DefineConstants>PublishDir=$(PublishDir)</DefineConstants>
     <SuppressValidation>true</SuppressValidation>
   </PropertyGroup>

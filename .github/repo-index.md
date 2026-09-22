@@ -1,13 +1,13 @@
 # Repository index
 
-Freshness: `d882a6045eb84fe84ac919314093515529a52e84` (2026-08-26), plus the current performance worktree. Added paths considered: `src\MdViewer.App\SingleInstanceCoordinator.cs` and `tests\MdViewer.Performance`.
+Freshness: `078d55220572286549e4a6f4db570da74a86de0b` (2026-09-22), plus the current dual-architecture installer worktree. Added paths considered: none.
 
 ## Functional areas
 
 - Windows viewer shell: WPF startup, single-process launch forwarding, commands, drag/drop, status UI, and WebView2 hosting in `src\MdViewer.App\App.xaml*`, `SingleInstanceCoordinator.cs`, and `MainWindow.xaml*`.
 - Markdown loading and rendering: bounded file reads, title detection, Markdig parsing, sanitization, local-image resolution, HTML generation, and metrics in `src\MdViewer.Core\MarkdownFileLoader.cs`, `MarkdownRenderer.cs`, `MarkdownDocument.cs`, and `RenderedMarkdown.cs`.
 - Editor integration: editor preferences and process launch in `src\MdViewer.App\EditorLauncher.cs`, `EditorSettingsWindow.xaml*`, and `src\MdViewer.Core\EditorSettingsStore.cs`.
-- Packaging and shell registration: self-contained Windows publishing in `scripts\Build-Installer.ps1`; WiX installer sources in `installer\MdViewer.Installer`.
+- Packaging and shell registration: native self-contained x64 and ARM64 Windows publishing in `scripts\Build-Installer.ps1`; architecture-parameterized WiX installer sources in `installer\MdViewer.Installer`.
 - Product and security design: `README.md` and `docs\ARCHITECTURE.md`.
 
 ## Technical layers and dependency flow
