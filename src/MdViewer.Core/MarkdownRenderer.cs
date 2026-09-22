@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
-using System.Text.RegularExpressions;
 using Markdig;
 using Markdig.Extensions.AutoIdentifiers;
 using Markdig.Parsers;
@@ -17,6 +15,9 @@ public sealed class MarkdownRenderer
 {
     private const string ImageUriPrefix = "https://md-viewer.local/assets/";
 
+    private static readonly IReadOnlyDictionary<string, RenderedImage> EmptyImages =
+        new Dictionary<string, RenderedImage>();
+
     private static readonly IReadOnlyDictionary<string, string> ImageContentTypes =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -27,14 +28,6 @@ public sealed class MarkdownRenderer
             [".webp"] = "image/webp",
             [".svg"] = "image/svg+xml"
         };
-
-    private static readonly Regex ImageTagPattern = new(
-        @"^<img\b(?<attributes>[^>]*)/?>$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
-
-    private static readonly Regex HtmlAttributePattern = new(
-        """(?<name>[^\s=/>]+)(?:\s*=\s*(?:"(?<double>[^"]*)"|'(?<single>[^']*)'|(?<unquoted>[^\s"'=<>`]+)))?""",
-        RegexOptions.CultureInvariant);
 
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAutoIdentifiers(AutoIdentifierOptions.GitHub)
@@ -88,215 +81,249 @@ public sealed class MarkdownRenderer
         string markdown,
         string? sourceFilePath)
     {
-        var imageAssets = new Dictionary<string, RenderedImage>(StringComparer.Ordinal);
-        var imageIdsByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        List<LinkInline>? images = null;
-        foreach (var link in document.Descendants<LinkInline>())
+        List<LinkInline>? links = null;
+        List<AutolinkInline>? autolinks = null;
+        List<HtmlInline>? htmlInlines = null;
+        List<HtmlBlock>? htmlBlocks = null;
+
+        foreach (var node in document.Descendants())
         {
-            link.GetDynamicUrl = null;
-            if (link.IsImage)
+            switch (node)
             {
-                (images ??= []).Add(link);
-            }
-            else if (!IsAllowedLink(link.Url))
-            {
-                link.Url = "#md-viewer-blocked-link";
-                link.Title = "Blocked unsafe link";
+                case LinkInline link:
+                    (links ??= []).Add(link);
+                    break;
+                case AutolinkInline autolink:
+                    (autolinks ??= []).Add(autolink);
+                    break;
+                case HtmlInline htmlInline:
+                    (htmlInlines ??= []).Add(htmlInline);
+                    break;
+                case HtmlBlock htmlBlock:
+                    (htmlBlocks ??= []).Add(htmlBlock);
+                    break;
             }
         }
 
-        if (images is not null)
+        ImageResolver? imageResolver = null;
+        if (links is not null)
         {
-            foreach (var image in images)
+            foreach (var link in links)
             {
-                var alt = GetInlineText(image);
-                image.ReplaceBy(new SafeHtmlInline(CreateImageHtml(
-                    image.Url,
-                    alt,
-                    image.Title,
-                    width: null,
-                    height: null,
-                    sourceFilePath,
-                    imageAssets,
-                    imageIdsByPath)));
+                link.GetDynamicUrl = null;
+                if (link.IsImage)
+                {
+                    var alt = GetInlineText(link);
+                    imageResolver ??= new ImageResolver(sourceFilePath);
+                    link.ReplaceBy(new SafeHtmlInline(imageResolver.CreateHtml(
+                        link.Url,
+                        alt,
+                        link.Title,
+                        width: null,
+                        height: null)));
+                }
+                else if (!IsAllowedLink(link.Url))
+                {
+                    link.Url = "#md-viewer-blocked-link";
+                    link.Title = "Blocked unsafe link";
+                }
             }
         }
 
-        var htmlInlines = document.Descendants<HtmlInline>().ToArray();
-        foreach (var htmlInline in htmlInlines)
+        if (htmlInlines is not null)
         {
-            if (!TryParseImageTag(htmlInline.Tag, out var attributes))
+            foreach (var htmlInline in htmlInlines)
             {
-                htmlInline.ReplaceBy(new SafeHtmlInline(
-                    HtmlEncoder.Default.Encode(htmlInline.Tag)));
-                continue;
-            }
+                if (!TryParseImageTag(htmlInline.Tag, out var attributes))
+                {
+                    htmlInline.ReplaceBy(new SafeHtmlInline(
+                        HtmlEncoder.Default.Encode(htmlInline.Tag)));
+                    continue;
+                }
 
-            htmlInline.ReplaceBy(new SafeHtmlInline(CreateImageHtml(
-                attributes.GetValueOrDefault("src"),
-                attributes.GetValueOrDefault("alt") ?? string.Empty,
-                attributes.GetValueOrDefault("title"),
-                ParseDimension(attributes.GetValueOrDefault("width")),
-                ParseDimension(attributes.GetValueOrDefault("height")),
-                sourceFilePath,
-                imageAssets,
-                imageIdsByPath)));
-        }
-
-        var htmlBlocks = document.Descendants<HtmlBlock>().ToArray();
-        foreach (var htmlBlock in htmlBlocks)
-        {
-            var rawHtml = markdown.AsSpan(
-                htmlBlock.Span.Start,
-                htmlBlock.Span.End - htmlBlock.Span.Start + 1).Trim().ToString();
-            SafeHtmlBlock replacement;
-            if (!TryParseImageTag(rawHtml, out var attributes))
-            {
-                replacement = new SafeHtmlBlock(HtmlEncoder.Default.Encode(rawHtml));
-            }
-            else
-            {
-                replacement = new SafeHtmlBlock(CreateImageHtml(
-                    attributes.GetValueOrDefault("src"),
-                    attributes.GetValueOrDefault("alt") ?? string.Empty,
-                    attributes.GetValueOrDefault("title"),
-                    ParseDimension(attributes.GetValueOrDefault("width")),
-                    ParseDimension(attributes.GetValueOrDefault("height")),
-                    sourceFilePath,
-                    imageAssets,
-                    imageIdsByPath));
-            }
-
-            var parent = htmlBlock.Parent;
-            if (parent is null)
-            {
-                continue;
-            }
-
-            parent[parent.IndexOf(htmlBlock)] = replacement;
-        }
-
-        foreach (var autolink in document.Descendants<AutolinkInline>())
-        {
-            var target = autolink.IsEmail ? $"mailto:{autolink.Url}" : autolink.Url;
-            if (!IsAllowedLink(target))
-            {
-                autolink.Url = "#md-viewer-blocked-link";
-                autolink.IsEmail = false;
+                imageResolver ??= new ImageResolver(sourceFilePath);
+                htmlInline.ReplaceBy(new SafeHtmlInline(imageResolver.CreateHtml(
+                    attributes.Source,
+                    attributes.Alt ?? string.Empty,
+                    attributes.Title,
+                    ParseDimension(attributes.Width),
+                    ParseDimension(attributes.Height))));
             }
         }
 
-        return imageAssets;
+        if (htmlBlocks is not null)
+        {
+            foreach (var htmlBlock in htmlBlocks)
+            {
+                var rawHtml = markdown.AsSpan(
+                    htmlBlock.Span.Start,
+                    htmlBlock.Span.End - htmlBlock.Span.Start + 1).Trim().ToString();
+                SafeHtmlBlock replacement;
+                if (!TryParseImageTag(rawHtml, out var attributes))
+                {
+                    replacement = new SafeHtmlBlock(HtmlEncoder.Default.Encode(rawHtml));
+                }
+                else
+                {
+                    imageResolver ??= new ImageResolver(sourceFilePath);
+                    replacement = new SafeHtmlBlock(imageResolver.CreateHtml(
+                        attributes.Source,
+                        attributes.Alt ?? string.Empty,
+                        attributes.Title,
+                        ParseDimension(attributes.Width),
+                        ParseDimension(attributes.Height)));
+                }
+
+                var parent = htmlBlock.Parent;
+                if (parent is not null)
+                {
+                    parent[parent.IndexOf(htmlBlock)] = replacement;
+                }
+            }
+        }
+
+        if (autolinks is not null)
+        {
+            foreach (var autolink in autolinks)
+            {
+                var target = autolink.IsEmail ? $"mailto:{autolink.Url}" : autolink.Url;
+                if (!IsAllowedLink(target))
+                {
+                    autolink.Url = "#md-viewer-blocked-link";
+                    autolink.IsEmail = false;
+                }
+            }
+        }
+
+        return imageResolver?.Images ?? EmptyImages;
     }
 
-    private static string CreateImageHtml(
-        string? target,
-        string alt,
-        string? title,
-        int? width,
-        int? height,
-        string? sourceFilePath,
-        IDictionary<string, RenderedImage> imageAssets,
-        IDictionary<string, string> imageIdsByPath)
+    private static bool TryParseImageTag(string tag, out ImageAttributes attributes)
     {
-        if (!TryResolveImage(target, sourceFilePath, out var image))
-        {
-            return CreateBlockedImage(alt);
-        }
-
-        if (!imageIdsByPath.TryGetValue(image.FilePath, out var imageId))
-        {
-            imageId = imageAssets.Count.ToString(CultureInfo.InvariantCulture);
-            imageIdsByPath.Add(image.FilePath, imageId);
-            imageAssets.Add(imageId, image);
-        }
-
-        var html = new StringBuilder("<img src=\"");
-        html.Append(ImageUriPrefix).Append(imageId).Append("\" alt=\"")
-            .Append(HtmlEncoder.Default.Encode(alt)).Append('"');
-        AppendAttribute(html, "title", title);
-        AppendDimension(html, "width", width);
-        AppendDimension(html, "height", height);
-        html.Append(" loading=\"lazy\" decoding=\"async\">");
-        return html.ToString();
-    }
-
-    private static bool TryResolveImage(
-        string? target,
-        string? sourceFilePath,
-        out RenderedImage image)
-    {
-        image = null!;
-        if (string.IsNullOrWhiteSpace(target)
-            || string.IsNullOrWhiteSpace(sourceFilePath)
-            || Path.IsPathRooted(target)
-            || Uri.TryCreate(target, UriKind.Absolute, out _))
+        attributes = default;
+        var remaining = tag.AsSpan().Trim();
+        if (remaining.Length < 5
+            || remaining[0] != '<'
+            || !remaining[1..].StartsWith("img", StringComparison.OrdinalIgnoreCase)
+            || (!char.IsWhiteSpace(remaining[4]) && remaining[4] is not '/' and not '>'))
         {
             return false;
         }
 
-        string documentDirectory;
-        string imagePath;
-        try
+        remaining = remaining[4..];
+        var hasSource = false;
+        while (true)
         {
-            documentDirectory = Path.GetFullPath(Path.GetDirectoryName(sourceFilePath)!);
-            var decodedTarget = Uri.UnescapeDataString(target.Replace('\\', '/'));
-            imagePath = Path.GetFullPath(
-                Path.Combine(documentDirectory, decodedTarget.Replace('/', Path.DirectorySeparatorChar)));
-        }
-        catch (Exception exception) when (
-            exception is ArgumentException or NotSupportedException or PathTooLongException or UriFormatException)
-        {
-            return false;
-        }
+            remaining = remaining.TrimStart();
+            if (remaining.IsEmpty)
+            {
+                return false;
+            }
 
-        var directoryPrefix = Path.TrimEndingDirectorySeparator(documentDirectory)
-            + Path.DirectorySeparatorChar;
-        if (!imagePath.StartsWith(directoryPrefix, StringComparison.OrdinalIgnoreCase)
-            || !ImageContentTypes.TryGetValue(Path.GetExtension(imagePath), out var contentType)
-            || !File.Exists(imagePath))
-        {
-            return false;
-        }
+            if (remaining[0] == '>')
+            {
+                return hasSource && remaining[1..].Trim().IsEmpty;
+            }
 
-        image = new RenderedImage(imagePath, contentType);
-        return true;
+            if (remaining[0] == '/')
+            {
+                remaining = remaining[1..].TrimStart();
+                if (!remaining.IsEmpty && remaining[0] == '>')
+                {
+                    return hasSource && remaining[1..].Trim().IsEmpty;
+                }
+
+                return false;
+            }
+
+            var nameLength = 0;
+            while (nameLength < remaining.Length
+                   && !char.IsWhiteSpace(remaining[nameLength])
+                   && remaining[nameLength] is not '=' and not '/' and not '>')
+            {
+                nameLength++;
+            }
+
+            if (nameLength == 0)
+            {
+                return false;
+            }
+
+            var name = remaining[..nameLength];
+            remaining = remaining[nameLength..].TrimStart();
+            ReadOnlySpan<char> value = default;
+            var hasValue = false;
+            if (!remaining.IsEmpty && remaining[0] == '=')
+            {
+                remaining = remaining[1..].TrimStart();
+                if (remaining.IsEmpty)
+                {
+                    return false;
+                }
+
+                hasValue = true;
+                if (remaining[0] is '"' or '\'')
+                {
+                    var quote = remaining[0];
+                    remaining = remaining[1..];
+                    var closingQuote = remaining.IndexOf(quote);
+                    if (closingQuote < 0)
+                    {
+                        return false;
+                    }
+
+                    value = remaining[..closingQuote];
+                    remaining = remaining[(closingQuote + 1)..];
+                }
+                else
+                {
+                    var valueLength = 0;
+                    while (valueLength < remaining.Length
+                           && !char.IsWhiteSpace(remaining[valueLength])
+                           && remaining[valueLength] is not '"' and not '\'' and not '=' and not '<' and not '>' and not '`')
+                    {
+                        valueLength++;
+                    }
+
+                    if (valueLength == 0)
+                    {
+                        return false;
+                    }
+
+                    value = remaining[..valueLength];
+                    remaining = remaining[valueLength..];
+                }
+            }
+
+            if (name.Equals("src", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!hasSource)
+                {
+                    attributes.Source = hasValue ? DecodeAttribute(value) : null;
+                    hasSource = true;
+                }
+            }
+            else if (name.Equals("alt", StringComparison.OrdinalIgnoreCase) && attributes.Alt is null)
+            {
+                attributes.Alt = hasValue ? DecodeAttribute(value) : null;
+            }
+            else if (name.Equals("title", StringComparison.OrdinalIgnoreCase) && attributes.Title is null)
+            {
+                attributes.Title = hasValue ? DecodeAttribute(value) : null;
+            }
+            else if (name.Equals("width", StringComparison.OrdinalIgnoreCase) && attributes.Width is null)
+            {
+                attributes.Width = hasValue ? DecodeAttribute(value) : null;
+            }
+            else if (name.Equals("height", StringComparison.OrdinalIgnoreCase) && attributes.Height is null)
+            {
+                attributes.Height = hasValue ? DecodeAttribute(value) : null;
+            }
+        }
     }
 
-    private static string CreateBlockedImage(string alt)
-    {
-        var label = string.IsNullOrWhiteSpace(alt)
-            ? "Image blocked"
-            : $"Image blocked: {alt}";
-        return $"<span class=\"blocked-image\" role=\"note\">{HtmlEncoder.Default.Encode(label)}</span>";
-    }
-
-    private static bool TryParseImageTag(
-        string tag,
-        out Dictionary<string, string?> attributes)
-    {
-        attributes = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        var match = ImageTagPattern.Match(tag);
-        if (!match.Success)
-        {
-            return false;
-        }
-
-        foreach (Match attribute in HtmlAttributePattern.Matches(match.Groups["attributes"].Value))
-        {
-            var name = attribute.Groups["name"].Value;
-            var value = attribute.Groups["double"].Success
-                ? attribute.Groups["double"].Value
-                : attribute.Groups["single"].Success
-                    ? attribute.Groups["single"].Value
-                    : attribute.Groups["unquoted"].Success
-                        ? attribute.Groups["unquoted"].Value
-                        : null;
-            attributes.TryAdd(name, value is null ? null : WebUtility.HtmlDecode(value));
-        }
-
-        return attributes.ContainsKey("src");
-    }
+    private static string DecodeAttribute(ReadOnlySpan<char> value) =>
+        System.Net.WebUtility.HtmlDecode(value.ToString());
 
     private static int? ParseDimension(string? value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var dimension)
@@ -322,6 +349,14 @@ public sealed class MarkdownRenderer
         }
     }
 
+    private static string CreateBlockedImage(string alt)
+    {
+        var label = string.IsNullOrWhiteSpace(alt)
+            ? "Image blocked"
+            : $"Image blocked: {alt}";
+        return $"<span class=\"blocked-image\" role=\"note\">{HtmlEncoder.Default.Encode(label)}</span>";
+    }
+
     private static bool IsAllowedLink(string? target)
     {
         if (string.IsNullOrWhiteSpace(target))
@@ -336,6 +371,126 @@ public sealed class MarkdownRenderer
 
         return Uri.TryCreate(target, UriKind.Absolute, out var uri)
             && uri.Scheme is "https" or "http" or "mailto";
+    }
+
+    private struct ImageAttributes
+    {
+        public string? Source { get; set; }
+
+        public string? Alt { get; set; }
+
+        public string? Title { get; set; }
+
+        public string? Width { get; set; }
+
+        public string? Height { get; set; }
+    }
+
+    private sealed class ImageResolver
+    {
+        private readonly string? _documentDirectory;
+        private readonly string? _directoryPrefix;
+        private readonly Dictionary<string, RenderedImage?> _imagesByTarget =
+            new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _imageIdsByPath =
+            new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, RenderedImage> _images =
+            new(StringComparer.Ordinal);
+
+        public ImageResolver(string? sourceFilePath)
+        {
+            if (string.IsNullOrWhiteSpace(sourceFilePath))
+            {
+                return;
+            }
+
+            try
+            {
+                _documentDirectory = Path.GetFullPath(Path.GetDirectoryName(sourceFilePath)!);
+                _directoryPrefix = Path.TrimEndingDirectorySeparator(_documentDirectory)
+                    + Path.DirectorySeparatorChar;
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                _documentDirectory = null;
+                _directoryPrefix = null;
+            }
+        }
+
+        public IReadOnlyDictionary<string, RenderedImage> Images => _images;
+
+        public string CreateHtml(
+            string? target,
+            string alt,
+            string? title,
+            int? width,
+            int? height)
+        {
+            if (!TryResolve(target, out var image))
+            {
+                return CreateBlockedImage(alt);
+            }
+
+            if (!_imageIdsByPath.TryGetValue(image.FilePath, out var imageId))
+            {
+                imageId = _images.Count.ToString(CultureInfo.InvariantCulture);
+                _imageIdsByPath.Add(image.FilePath, imageId);
+                _images.Add(imageId, image);
+            }
+
+            var html = new StringBuilder("<img src=\"");
+            html.Append(ImageUriPrefix).Append(imageId).Append("\" alt=\"")
+                .Append(HtmlEncoder.Default.Encode(alt)).Append('"');
+            AppendAttribute(html, "title", title);
+            AppendDimension(html, "width", width);
+            AppendDimension(html, "height", height);
+            html.Append(" loading=\"lazy\" decoding=\"async\">");
+            return html.ToString();
+        }
+
+        private bool TryResolve(string? target, out RenderedImage image)
+        {
+            image = null!;
+            if (string.IsNullOrWhiteSpace(target)
+                || _documentDirectory is null
+                || _directoryPrefix is null
+                || Path.IsPathRooted(target)
+                || Uri.TryCreate(target, UriKind.Absolute, out _))
+            {
+                return false;
+            }
+
+            if (_imagesByTarget.TryGetValue(target, out var cached))
+            {
+                image = cached!;
+                return cached is not null;
+            }
+
+            RenderedImage? resolved = null;
+            try
+            {
+                var decodedTarget = Uri.UnescapeDataString(target.Replace('\\', '/'));
+                var imagePath = Path.GetFullPath(
+                    Path.Combine(
+                        _documentDirectory,
+                        decodedTarget.Replace('/', Path.DirectorySeparatorChar)));
+                if (imagePath.StartsWith(_directoryPrefix, StringComparison.OrdinalIgnoreCase)
+                    && ImageContentTypes.TryGetValue(Path.GetExtension(imagePath), out var contentType)
+                    && File.Exists(imagePath))
+                {
+                    resolved = new RenderedImage(imagePath, contentType);
+                }
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or PathTooLongException or UriFormatException)
+            {
+            }
+
+            _imagesByTarget.Add(target, resolved);
+            image = resolved!;
+            return resolved is not null;
+        }
     }
 
     private static string GetInlineText(ContainerInline container)

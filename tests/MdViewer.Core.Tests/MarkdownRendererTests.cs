@@ -105,6 +105,35 @@ public sealed class MarkdownRendererTests
     }
 
     [Theory]
+    [InlineData("""<IMG SRC='image.webp' ALT='Demo'>""")]
+    [InlineData("""<img src=image.webp alt=Demo />""")]
+    [InlineData("""<img alt="Demo" src="image.webp">""")]
+    public void Render_supports_common_raw_html_image_attribute_forms(string imageTag)
+    {
+        using var directory = new TemporaryDirectory();
+        var markdownPath = Path.Combine(directory.Path, "README.md");
+        File.WriteAllBytes(Path.Combine(directory.Path, "image.webp"), [0x52, 0x49, 0x46, 0x46]);
+
+        var result = _renderer.Render(imageTag, "Images", markdownPath);
+
+        Assert.Single(result.Images);
+        Assert.Contains("<img src=\"https://md-viewer.local/assets/0\"", result.Html);
+        Assert.Contains("alt=\"Demo\"", result.Html);
+    }
+
+    [Theory]
+    [InlineData("""<imgfoo src="image.png">""")]
+    [InlineData("""<img src="image.png" """)]
+    [InlineData("""<img src=>""")]
+    public void Render_encodes_malformed_raw_html_image_tags(string imageTag)
+    {
+        var result = _renderer.Render(imageTag, "Images");
+
+        Assert.Empty(result.Images);
+        Assert.DoesNotContain("<img ", result.Html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
     [InlineData("../outside.png")]
     [InlineData("C:/Windows/image.png")]
     [InlineData("\\\\server\\share\\image.png")]

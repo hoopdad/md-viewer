@@ -48,15 +48,20 @@ open Default Apps so the user can confirm the default when Windows requires it.
 ## Performance
 
 The parser pipeline is created once, input is read sequentially, and rendering
-is performed from an in-memory snapshot. On shell launch, file parsing runs in
-parallel with WebView2 initialization. Title and word-count scans are
-allocation-free, image URLs are resolved while walking the parsed document, and
-the WebView receives one static HTML document. Local images use native lazy
-loading and asynchronous decoding, remain out of the initial HTML payload, and
-are streamed only when WebView2 requests them. Installed binaries are published
-with composite ReadyToRun compilation to reduce managed startup JIT work. No
-network resources, plugins, syntax-highlighting scripts, or document-selected
-extensions are loaded.
+is performed from an in-memory snapshot. On cold shell launch, file parsing runs
+in parallel with WebView2 initialization. Later shell launches forward the file
+to the existing process through a current-user named pipe, reusing the warm WPF
+and WebView2 environment. Title and word-count scans are allocation-free, links
+and raw HTML are collected in one document walk, and repeated image targets
+share path resolution and filesystem checks. The WebView receives one static
+HTML document and the loading surface remains visible until its DOM is ready.
+Local images use native lazy loading and asynchronous decoding, remain out of
+the initial HTML payload, and are streamed only when WebView2 requests them.
+Installed binaries use the portable self-contained IL format. This avoids the
+large composite ReadyToRun framework image and an x64 non-composite ReadyToRun
+compatibility failure under Windows-on-Arm emulation; warm launches reuse the
+already-JIT-compiled process. No network resources, plugins, syntax-highlighting
+scripts, or document-selected extensions are loaded.
 
 WebView2 process startup and HTML layout dominate normal document-open latency.
 Rewriting the parser in Rust, C, or assembly would add interop and deployment

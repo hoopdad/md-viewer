@@ -2,6 +2,9 @@
 
 A fast, read-only Markdown viewer for Windows.
 
+Repeated file opens reuse the running viewer process and its initialized
+WebView2 environment for faster display.
+
 ## Goals
 
 - Open `.md` files directly from File Explorer.
@@ -21,6 +24,12 @@ A fast, read-only Markdown viewer for Windows.
 dotnet restore MdViewer.slnx
 dotnet test MdViewer.slnx --no-restore
 dotnet build MdViewer.slnx -c Release --no-restore
+```
+
+Run a representative renderer benchmark:
+
+```powershell
+dotnet run -c Release --runtime win-x64 --project tests\MdViewer.Performance -- --scenario images
 ```
 
 Build the self-contained x64 Windows installer:

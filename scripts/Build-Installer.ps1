@@ -10,14 +10,17 @@ $publishDirectory = Join-Path $repositoryRoot "artifacts\publish\win-x64"
 $installerProject = Join-Path $repositoryRoot "installer\MdViewer.Installer\MdViewer.Installer.wixproj"
 $appProject = Join-Path $repositoryRoot "src\MdViewer.App\MdViewer.App.csproj"
 
+if (Test-Path -LiteralPath $publishDirectory) {
+    Remove-Item -LiteralPath $publishDirectory -Recurse -Force
+}
+
 dotnet publish $appProject `
     --configuration $Configuration `
     --runtime win-x64 `
     --self-contained true `
     --output $publishDirectory `
     -p:PublishSingleFile=false `
-    -p:PublishReadyToRun=true `
-    -p:PublishReadyToRunComposite=true `
+    -p:PublishReadyToRun=false `
     -p:DebugSymbols=false `
     -p:DebugType=None
 

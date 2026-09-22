@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "Markdig": {
+        "type": "Transitive",
+        "resolved": "0.41.3",
+        "contentHash": "i3vSTyGpBGWbJB04aJ3cPJs0T3BV2e1nduW3EUHK/i+xUupYbym75iZPss/XjqhS5JlBErwQYnx7ofK3Zcsozg=="
+      },
+      "mdviewer.core": {
+        "type": "Project",
+        "dependencies": {
+          "Markdig": "[0.41.3, )"
+        }
+      }
+    }
+  }
+}

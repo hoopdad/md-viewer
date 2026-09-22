@@ -21,10 +21,15 @@ public partial class MainWindow : Window
         "settings.json"));
     private readonly string? _initialFilePath;
     private readonly string? _initialError;
+    private readonly TaskCompletionSource<bool> _webViewInitialization =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private string? _currentFilePath;
     private byte[]? _documentContent;
     private IReadOnlyDictionary<string, RenderedImage> _documentImages =
         new Dictionary<string, RenderedImage>();
+    private TaskCompletionSource? _documentReady;
+    private ulong _documentNavigationId;
+    private int _loadVersion;
     private bool _webViewReady;
 
     public MainWindow(string? initialFilePath, string? initialError)
@@ -50,12 +55,14 @@ public partial class MainWindow : Window
         }
         catch (WebView2RuntimeNotFoundException)
         {
+            _webViewInitialization.TrySetResult(false);
             ShowWelcomeError(
                 "WebView2 is required",
                 "Install the Microsoft Edge WebView2 Runtime, then reopen md-viewer.");
             return;
         }
 
+        _webViewInitialization.TrySetResult(true);
         if (_initialError is not null)
         {
             ShowWelcomeError("Unable to open files", _initialError);
@@ -63,6 +70,28 @@ public partial class MainWindow : Window
         else if (_initialFilePath is not null)
         {
             await LoadFileAsync(_initialFilePath, initialLoad);
+        }
+    }
+
+    internal async Task OpenLaunchRequestAsync(LaunchRequest request)
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Show();
+        Activate();
+
+        if (request.Error is not null)
+        {
+            ShowWelcomeError("Unable to open files", request.Error);
+            return;
+        }
+
+        if (request.FilePath is not null && await _webViewInitialization.Task)
+        {
+            await LoadFileAsync(request.FilePath);
         }
     }
 
@@ -88,6 +117,8 @@ public partial class MainWindow : Window
         settings.IsSwipeNavigationEnabled = false;
 
         core.NavigationStarting += OnNavigationStarting;
+        core.DOMContentLoaded += OnDomContentLoaded;
+        core.NavigationCompleted += OnNavigationCompleted;
         core.NewWindowRequested += OnNewWindowRequested;
         core.DownloadStarting += OnDownloadStarting;
         core.PermissionRequested += OnPermissionRequested;
@@ -100,12 +131,17 @@ public partial class MainWindow : Window
         string filePath,
         Task<(MarkdownDocument Document, RenderedMarkdown Rendered)>? pendingLoad = null)
     {
+        var loadVersion = ++_loadVersion;
         BusyOverlay.Visibility = Visibility.Visible;
         StatusText.Text = "Opening...";
 
         try
         {
             var (document, rendered) = await (pendingLoad ?? LoadAndRenderAsync(filePath));
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
 
             _currentFilePath = document.FilePath;
             DocumentTitle.Text = document.DisplayName;
@@ -113,14 +149,26 @@ public partial class MainWindow : Window
             DocumentPath.ToolTip = document.FilePath;
             Title = $"{document.DisplayName} - md-viewer";
             MetricsText.Text = $"{rendered.WordCount:N0} words  |  {FormatBytes(document.ByteLength)}";
-            StatusText.Text = "Remote content blocked  |  Source is read-only";
             ReloadButton.IsEnabled = true;
             OpenInEditorButton.IsEnabled = true;
             WelcomePanel.Visibility = Visibility.Collapsed;
             Viewer.Visibility = Visibility.Visible;
             _documentContent = Encoding.UTF8.GetBytes(rendered.Html);
             _documentImages = rendered.Images;
+            _documentReady?.TrySetCanceled();
+            _documentReady = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
             Viewer.CoreWebView2.Navigate(DocumentUri);
+            await _documentReady.Task;
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
+
+            StatusText.Text = "Remote content blocked  |  Source is read-only";
+        }
+        catch (OperationCanceledException) when (loadVersion != _loadVersion)
+        {
         }
         catch (MarkdownFileTooLargeException exception)
         {
@@ -144,7 +192,10 @@ public partial class MainWindow : Window
         }
         finally
         {
-            BusyOverlay.Visibility = Visibility.Collapsed;
+            if (loadVersion == _loadVersion)
+            {
+                BusyOverlay.Visibility = Visibility.Collapsed;
+            }
         }
     }
 
@@ -364,11 +415,33 @@ public partial class MainWindow : Window
             || e.Uri.StartsWith($"{DocumentUri}#", StringComparison.OrdinalIgnoreCase)
             || e.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase))
         {
+            if (e.Uri.Equals(DocumentUri, StringComparison.OrdinalIgnoreCase))
+            {
+                _documentNavigationId = e.NavigationId;
+            }
+
             return;
         }
 
         e.Cancel = true;
         OpenExternalLink(e.Uri);
+    }
+
+    private void OnDomContentLoaded(object? sender, CoreWebView2DOMContentLoadedEventArgs e)
+    {
+        if (e.NavigationId == _documentNavigationId)
+        {
+            _documentReady?.TrySetResult();
+        }
+    }
+
+    private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        if (e.NavigationId == _documentNavigationId && !e.IsSuccess)
+        {
+            _documentReady?.TrySetException(
+                new IOException($"WebView2 could not display the document ({e.WebErrorStatus})."));
+        }
     }
 
     private void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
