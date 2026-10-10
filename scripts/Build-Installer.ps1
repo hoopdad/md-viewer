@@ -33,6 +33,7 @@ foreach ($targetArchitecture in $architectures) {
         --output $publishDirectory `
         -p:PublishSingleFile=false `
         -p:PublishReadyToRun=false `
+        -p:RestoreLockedMode=true `
         -p:DebugSymbols=false `
         -p:DebugType=None
 
@@ -44,6 +45,7 @@ foreach ($targetArchitecture in $architectures) {
         --configuration $Configuration `
         -p:Platform=$targetArchitecture `
         -p:InstallerPlatform=$targetArchitecture `
+        -p:RestoreLockedMode=true `
         -p:PublishDir=$publishDirectory `
         -p:OutputName="md-viewer-setup-$targetArchitecture"
 
@@ -52,5 +54,9 @@ foreach ($targetArchitecture in $architectures) {
     }
 
     $installer = Join-Path $repositoryRoot "installer\MdViewer.Installer\bin\$targetArchitecture\$Configuration\md-viewer-setup-$targetArchitecture.msi"
+    if (!(Test-Path -LiteralPath $installer -PathType Leaf)) {
+        throw "The md-viewer $targetArchitecture installer was not created at $installer."
+    }
+
     Write-Host "Installer created: $installer"
 }

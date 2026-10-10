@@ -5,6 +5,59 @@ A fast, read-only Markdown viewer for Windows.
 Repeated file opens reuse the running viewer process and its initialized
 WebView2 environment for faster display.
 
+## Install 1.0.0
+
+Download the installer from the [1.0.0 release](https://github.com/hoopdad/md-viewer/releases/tag/v1.0.0):
+
+| Windows system type | Installer |
+| --- | --- |
+| x64 (Intel or AMD) | [md-viewer-setup-x64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.0/md-viewer-setup-x64.msi) |
+| ARM64 (Windows on Arm) | [md-viewer-setup-arm64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.0/md-viewer-setup-arm64.msi) |
+
+Check **Settings > System > About > System type** if unsure. Use Windows 11
+(x64 or ARM64), or Windows 10 22H2 x64 where the operating system is still
+supported through Microsoft's extended security updates. 32-bit Windows,
+Linux, and macOS are not supported.
+
+The [Microsoft Edge WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/#download-section)
+is required. It is normally present on Windows 11; install it from Microsoft
+if md-viewer reports that WebView2 is missing. The MSI includes the matching
+.NET 8 runtime, so no separate .NET installation is needed.
+
+Close md-viewer, then double-click the matching MSI and complete installation.
+It installs for the current user into `%LOCALAPPDATA%\Programs\md-viewer`,
+without requiring an administrator installation. The release installers are
+**not code-signed**; Windows may show an unknown-publisher or SmartScreen
+warning. Verify the download against the release's `SHA256SUMS.txt` with
+`Get-FileHash .\md-viewer-setup-arm64.msi -Algorithm SHA256` (substitute the
+x64 filename as needed) and follow your organization's software policy.
+
+Launch **md-viewer** from Start, use **Open file** or drag in a `.md` or
+`.markdown` file. In File Explorer, use **Open with md-viewer** (on Windows 11,
+it may be under **Show more options**). To make it the default, use
+**Open with > Choose another app** or **Settings > Apps > Default apps**;
+the installer does not override a protected user-selected default.
+
+Uninstall through **Settings > Apps > Installed apps** (Windows 11) or
+**Apps & features** (Windows 10). Settings and the WebView2 cache remain under
+`%LOCALAPPDATA%\md-viewer`. If you previously installed an unreleased development
+MSI labeled 1.1.0, 1.2.0, or 1.3.0, uninstall it before installing 1.0.0:
+Windows Installer correctly blocks that version downgrade.
+
+## Use
+
+| Action | Shortcut |
+| --- | --- |
+| Open a Markdown file | Ctrl+O |
+| Reload the current file from disk | F5 |
+| Open the current file in your editor | Ctrl+E |
+
+**Editor settings** lets you select an editor EXE; by default, Windows chooses
+the editor using file associations. The viewer never saves the source file.
+Documents are limited to 8 MiB. Remote images, arbitrary HTML, scripts, and
+local images outside the document directory tree are blocked. Links to web
+pages or email open in the associated external application.
+
 ## Goals
 
 - Open `.md` files directly from File Explorer.
@@ -20,16 +73,21 @@ WebView2 environment for faster display.
 
 ## Build
 
+Prerequisites: Windows, the .NET 10 SDK (the solution uses `.slnx`), and access
+to NuGet feeds. The app targets .NET 8. WiX 5 is restored automatically for
+installer builds; a separate WiX installation is not required.
+
 ```powershell
-dotnet restore MdViewer.slnx
-dotnet test MdViewer.slnx --no-restore
+dotnet restore MdViewer.slnx --locked-mode
+dotnet test MdViewer.slnx -c Release --no-restore
 dotnet build MdViewer.slnx -c Release --no-restore
+dotnet list MdViewer.slnx package --vulnerable --include-transitive
 ```
 
 Run a representative renderer benchmark:
 
 ```powershell
-dotnet run -c Release --runtime win-x64 --project tests\MdViewer.Performance -- --scenario images
+dotnet run -c Release --project tests\MdViewer.Performance -- --scenario images
 ```
 
 Build native, self-contained MSI installers for both x64 and ARM64 Windows:
@@ -43,6 +101,13 @@ The installers are written to
 `installer\MdViewer.Installer\bin\arm64\Release\md-viewer-setup-arm64.msi`.
 To build only one architecture, pass `-Architecture x64` or
 `-Architecture arm64`.
+
+Product and assembly versions are set in `Directory.Build.props`; the WiX
+package consumes that same version. See [the changelog](CHANGELOG.md) for
+release notes. Before publishing, validate both MSI versions and architecture
+payloads, smoke-test the app, and attach both installers and their SHA-256
+checksums to the matching GitHub release. Build outputs are ignored by Git;
+GitHub release assets preserve the downloadable binaries.
 
 Each installer contains the matching .NET runtime and native app host, so ARM64
 devices run the ARM64 build without x64 emulation. ReadyToRun remains disabled:

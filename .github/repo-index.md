@@ -1,6 +1,6 @@
 # Repository index
 
-Freshness: `078d55220572286549e4a6f4db570da74a86de0b` (2026-09-22), plus the current dual-architecture installer worktree. Added paths considered: none.
+Freshness: `856c5bce3cdce68fd22468c6df1b326df7f6e7c7`, plus the 1.0.0 release preparation worktree (2026-10-10). Added paths considered: `CHANGELOG.md`, `src\MdViewer.App\app.manifest` (previously ignored).
 
 ## Functional areas
 
@@ -8,7 +8,7 @@ Freshness: `078d55220572286549e4a6f4db570da74a86de0b` (2026-09-22), plus the cur
 - Markdown loading and rendering: bounded file reads, title detection, Markdig parsing, sanitization, local-image resolution, HTML generation, and metrics in `src\MdViewer.Core\MarkdownFileLoader.cs`, `MarkdownRenderer.cs`, `MarkdownDocument.cs`, and `RenderedMarkdown.cs`.
 - Editor integration: editor preferences and process launch in `src\MdViewer.App\EditorLauncher.cs`, `EditorSettingsWindow.xaml*`, and `src\MdViewer.Core\EditorSettingsStore.cs`.
 - Packaging and shell registration: native self-contained x64 and ARM64 Windows publishing in `scripts\Build-Installer.ps1`; architecture-parameterized WiX installer sources in `installer\MdViewer.Installer`.
-- Product and security design: `README.md` and `docs\ARCHITECTURE.md`.
+- Product, installation, and release notes: `README.md`, `CHANGELOG.md`, and `docs\ARCHITECTURE.md`.
 
 ## Technical layers and dependency flow
 
@@ -28,11 +28,13 @@ Freshness: `078d55220572286549e4a6f4db570da74a86de0b` (2026-09-22), plus the cur
 - Local image behavior: `MarkdownRenderer.ImageResolver` and `MainWindow.OnWebResourceRequested`.
 - Security invariants: `docs\ARCHITECTURE.md`, renderer tests, and WebView settings/event handlers in `MainWindow.xaml.cs`.
 - Installer/publish behavior: `scripts\Build-Installer.ps1`, `installer\MdViewer.Installer`.
+- Release version: `Directory.Build.props` supplies `Version` to app/core assemblies and the WiX `ProductVersion` constant.
+- Windows execution/DPI compatibility: tracked `src\MdViewer.App\app.manifest`.
 
 ## Conventions and tests
 
 - Nullable reference types, implicit usings, warnings as errors, and locked NuGet restores are configured in `Directory.Build.props`.
 - Core behavior is tested with xUnit in `tests\MdViewer.Core.Tests`; rendering/security coverage is concentrated in `MarkdownRendererTests.cs`, and file I/O coverage in `MarkdownFileLoaderTests.cs`.
 - Repeatable renderer timing and allocation scenarios live in the package-free console project `tests\MdViewer.Performance`.
-- Standard validation: `dotnet restore MdViewer.slnx`, `dotnet test MdViewer.slnx --no-restore`, and `dotnet build MdViewer.slnx -c Release --no-restore`.
+- Standard validation: `dotnet restore MdViewer.slnx --locked-mode`, `dotnet test MdViewer.slnx -c Release --no-restore`, and `dotnet build MdViewer.slnx -c Release --no-restore`; scan dependencies with `dotnet list MdViewer.slnx package --vulnerable --include-transitive`.
 - Preserve the read-only, no-network, deny-by-default rendering model when changing performance-sensitive code.

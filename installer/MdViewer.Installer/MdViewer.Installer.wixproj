@@ -5,7 +5,7 @@
     <OutputName Condition="'$(OutputName)' == ''">md-viewer-setup-$(InstallerPlatform)</OutputName>
     <OutputType>Package</OutputType>
     <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\publish\win-$(InstallerPlatform)</PublishDir>
-    <DefineConstants>PublishDir=$(PublishDir)</DefineConstants>
+    <DefineConstants>PublishDir=$(PublishDir);ProductVersion=$(Version)</DefineConstants>
     <SuppressValidation>true</SuppressValidation>
   </PropertyGroup>
 </Project>
