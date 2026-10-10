@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.1 - 2026-10-10
+
+- Fixed shell launches replacing the document in an existing window. Each
+  Explorer or command-line file open now creates a separate window, including
+  repeated opens of the same file.
+- Preserved warm startup by sharing the running process and WebView2
+  environment across independent document windows.
+- The app continues accepting files after its original window closes and
+  exits only after the last window closes.
+- Shell launch forwarding waits for the new window to be created before the
+  launching process exits; failed forwarding reports an explicit error.
+- Added a Windows regression test covering concurrent file opens, duplicate
+  opens, document titles, independent closing, and process lifetime.
+- Native self-contained x64 and ARM64 MSI installers, version 1.0.1.
+
 ## 1.0.0 - 2026-10-10
 
 First public release of md-viewer, a read-only Markdown viewer for Windows.
@@ -18,7 +33,7 @@ First public release of md-viewer, a read-only Markdown viewer for Windows.
 ### Release notes
 
 Install the MSI matching your Windows architecture. See
-[installation instructions](README.md#install-100) for prerequisites,
+[installation instructions](README.md#install-101) for prerequisites,
 file associations, uninstalling, and SHA-256 verification.
 
 The installers are unsigned. Files larger than 8 MiB are not supported.

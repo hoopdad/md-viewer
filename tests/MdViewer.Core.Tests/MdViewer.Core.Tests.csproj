@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MdViewer.Core\MdViewer.Core.csproj" />
+    <Compile Include="..\..\src\MdViewer.App\SingleInstanceCoordinator.cs" Link="SingleInstanceCoordinator.cs" />
   </ItemGroup>
 
 </Project>

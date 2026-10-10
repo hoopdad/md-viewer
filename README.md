@@ -2,17 +2,19 @@
 
 A fast, read-only Markdown viewer for Windows.
 
-Repeated file opens reuse the running viewer process and its initialized
-WebView2 environment for faster display.
+Every shell file open creates a separate window, so previously opened documents
+remain visible. Windows share the running viewer process and its initialized
+WebView2 environment for faster display; the process exits after its last window
+closes.
 
-## Install 1.0.0
+## Install 1.0.1
 
-Download the installer from the [1.0.0 release](https://github.com/hoopdad/md-viewer/releases/tag/v1.0.0):
+Download the installer from the [1.0.1 release](https://github.com/hoopdad/md-viewer/releases/tag/v1.0.1):
 
 | Windows system type | Installer |
 | --- | --- |
-| x64 (Intel or AMD) | [md-viewer-setup-x64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.0/md-viewer-setup-x64.msi) |
-| ARM64 (Windows on Arm) | [md-viewer-setup-arm64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.0/md-viewer-setup-arm64.msi) |
+| x64 (Intel or AMD) | [md-viewer-setup-x64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.1/md-viewer-setup-x64.msi) |
+| ARM64 (Windows on Arm) | [md-viewer-setup-arm64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.1/md-viewer-setup-arm64.msi) |
 
 Check **Settings > System > About > System type** if unsure. Use Windows 11
 (x64 or ARM64), or Windows 10 22H2 x64 where the operating system is still
@@ -41,7 +43,7 @@ the installer does not override a protected user-selected default.
 Uninstall through **Settings > Apps > Installed apps** (Windows 11) or
 **Apps & features** (Windows 10). Settings and the WebView2 cache remain under
 `%LOCALAPPDATA%\md-viewer`. If you previously installed an unreleased development
-MSI labeled 1.1.0, 1.2.0, or 1.3.0, uninstall it before installing 1.0.0:
+MSI labeled 1.1.0, 1.2.0, or 1.3.0, uninstall it before installing 1.0.1:
 Windows Installer correctly blocks that version downgrade.
 
 ## Use
@@ -57,6 +59,10 @@ the editor using file associations. The viewer never saves the source file.
 Documents are limited to 8 MiB. Remote images, arbitrary HTML, scripts, and
 local images outside the document directory tree are blocked. Links to web
 pages or email open in the associated external application.
+
+Opening files from Explorer, `start x.md`, or another app creates a new window
+for each launch, including repeated opens of the same file. **Open file** and
+drag and drop replace the document only in the window where you use them.
 
 ## Goals
 
@@ -82,6 +88,14 @@ dotnet restore MdViewer.slnx --locked-mode
 dotnet test MdViewer.slnx -c Release --no-restore
 dotnet build MdViewer.slnx -c Release --no-restore
 dotnet list MdViewer.slnx package --vulnerable --include-transitive
+.\scripts\Test-MultiWindow.ps1 -Executable .\src\MdViewer.App\bin\Release\net8.0-windows\md-viewer.exe
+```
+
+Close existing viewer windows before the desktop regression test. To test
+installed file associations with `start`, run:
+
+```powershell
+.\scripts\Test-MultiWindow.ps1 -Executable "$env:LOCALAPPDATA\Programs\md-viewer\md-viewer.exe" -UseFileAssociation
 ```
 
 Run a representative renderer benchmark:

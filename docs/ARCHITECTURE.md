@@ -50,8 +50,16 @@ open Default Apps so the user can confirm the default when Windows requires it.
 The parser pipeline is created once, input is read sequentially, and rendering
 is performed from an in-memory snapshot. On cold shell launch, file parsing runs
 in parallel with WebView2 initialization. Later shell launches forward the file
-to the existing process through a current-user named pipe, reusing the warm WPF
-and WebView2 environment. Title and word-count scans are allocation-free, links
+to the existing process through a current-user named pipe. Each launch creates
+an independent WPF window and WebView2 control, sharing one lazily initialized
+WebView2 environment without replacing any existing document. Duplicate file
+opens also create separate windows. Closing the original window does not stop
+launch forwarding; the process exits only when its last window closes. In-window
+Open file and drag/drop still replace that window's document.
+The pipe listener starts before the first window is shown; a secondary process
+waits for acknowledgement that its new window was created before exiting.
+Failed forwarding reports an explicit error instead of silently losing a file.
+Title and word-count scans are allocation-free, links
 and raw HTML are collected in one document walk, and repeated image targets
 share path resolution and filesystem checks. The WebView receives one static
 HTML document and the loading surface remains visible until its DOM is ready.

@@ -21,8 +21,6 @@ public partial class MainWindow : Window
         "settings.json"));
     private readonly string? _initialFilePath;
     private readonly string? _initialError;
-    private readonly TaskCompletionSource<bool> _webViewInitialization =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private string? _currentFilePath;
     private byte[]? _documentContent;
     private IReadOnlyDictionary<string, RenderedImage> _documentImages =
@@ -55,14 +53,12 @@ public partial class MainWindow : Window
         }
         catch (WebView2RuntimeNotFoundException)
         {
-            _webViewInitialization.TrySetResult(false);
             ShowWelcomeError(
                 "WebView2 is required",
                 "Install the Microsoft Edge WebView2 Runtime, then reopen md-viewer.");
             return;
         }
 
-        _webViewInitialization.TrySetResult(true);
         if (_initialError is not null)
         {
             ShowWelcomeError("Unable to open files", _initialError);
@@ -73,35 +69,9 @@ public partial class MainWindow : Window
         }
     }
 
-    internal async Task OpenLaunchRequestAsync(LaunchRequest request)
-    {
-        if (WindowState == WindowState.Minimized)
-        {
-            WindowState = WindowState.Normal;
-        }
-
-        Show();
-        Activate();
-
-        if (request.Error is not null)
-        {
-            ShowWelcomeError("Unable to open files", request.Error);
-            return;
-        }
-
-        if (request.FilePath is not null && await _webViewInitialization.Task)
-        {
-            await LoadFileAsync(request.FilePath);
-        }
-    }
-
     private async Task InitializeWebViewAsync()
     {
-        var userDataFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "md-viewer",
-            "WebView2");
-        var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+        var environment = await ((App)Application.Current).GetWebViewEnvironmentAsync();
         await Viewer.EnsureCoreWebView2Async(environment);
         var core = Viewer.CoreWebView2;
         var settings = core.Settings;

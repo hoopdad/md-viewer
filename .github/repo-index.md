@@ -1,6 +1,6 @@
 # Repository index
 
-Freshness: `856c5bce3cdce68fd22468c6df1b326df7f6e7c7`, plus the 1.0.0 release preparation worktree (2026-10-10). Added paths considered: `CHANGELOG.md`, `src\MdViewer.App\app.manifest` (previously ignored).
+Freshness: `4c3c70d`, plus the 1.0.1 multi-window release worktree (2026-10-10). Added paths considered: `scripts\Test-MultiWindow.ps1`, `tests\MdViewer.Core.Tests\SingleInstanceCoordinatorTests.cs`. No deleted paths.
 
 ## Functional areas
 
@@ -13,7 +13,7 @@ Freshness: `856c5bce3cdce68fd22468c6df1b326df7f6e7c7`, plus the 1.0.0 release pr
 ## Technical layers and dependency flow
 
 1. `App.OnStartup` parses shell arguments with `LaunchRequest`; a secondary process forwards the request through `SingleInstanceCoordinator`, while the primary creates `MainWindow`.
-2. `MainWindow.OnLoaded` starts cold file load/render work in parallel with WebView2 environment initialization. Warm launch requests reuse that window and environment.
+2. Each launch creates an independent `MainWindow`; `OnLoaded` starts file load/render work in parallel with WebView2 initialization. All windows share the lazily initialized environment owned by `App`, not document state. The process exits after the last window closes.
 3. `MarkdownFileLoader` reads one UTF-8/Unicode snapshot with an 8 MiB limit.
 4. `MarkdownRenderer` uses one static Markdig pipeline, sanitizes links and images, and emits a complete inert HTML document plus image mappings and word count.
 5. `MainWindow` UTF-8 encodes the generated HTML, serves it and local images through WebView2 resource interception, navigates to the fixed `https://md-viewer.local/document` origin, and keeps loading state visible until the DOM is ready.
@@ -35,6 +35,8 @@ Freshness: `856c5bce3cdce68fd22468c6df1b326df7f6e7c7`, plus the 1.0.0 release pr
 
 - Nullable reference types, implicit usings, warnings as errors, and locked NuGet restores are configured in `Directory.Build.props`.
 - Core behavior is tested with xUnit in `tests\MdViewer.Core.Tests`; rendering/security coverage is concentrated in `MarkdownRendererTests.cs`, and file I/O coverage in `MarkdownFileLoaderTests.cs`.
+- The package-free launch coordinator is linked into core tests for concurrent forwarding and acknowledgement coverage. A secondary process exits successfully only after the primary handles its launch request.
 - Repeatable renderer timing and allocation scenarios live in the package-free console project `tests\MdViewer.Performance`.
+- Windows shell/window lifecycle regression: `scripts\Test-MultiWindow.ps1 -Executable <app.exe>`; pass `-UseFileAssociation` to exercise `cmd /c start` with installed associations. Requires an interactive Windows desktop and no existing viewer windows; checks document titles, duplicates, independent closing, forwarding after the original closes, and last-window process exit.
 - Standard validation: `dotnet restore MdViewer.slnx --locked-mode`, `dotnet test MdViewer.slnx -c Release --no-restore`, and `dotnet build MdViewer.slnx -c Release --no-restore`; scan dependencies with `dotnet list MdViewer.slnx package --vulnerable --include-transitive`.
 - Preserve the read-only, no-network, deny-by-default rendering model when changing performance-sensitive code.

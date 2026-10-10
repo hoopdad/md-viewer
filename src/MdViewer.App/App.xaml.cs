@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using MdViewer.Core;
+using Microsoft.Web.WebView2.Core;
 
 namespace MdViewer.App;
 
@@ -9,6 +10,7 @@ public partial class App : Application
 {
     private readonly CancellationTokenSource _shutdown = new();
     private SingleInstanceCoordinator? _singleInstance;
+    private Task<CoreWebView2Environment>? _webViewEnvironment;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -21,14 +23,21 @@ public partial class App : Application
             var forwarded = _singleInstance.ForwardAsync(request, _shutdown.Token)
                 .GetAwaiter()
                 .GetResult();
+            if (!forwarded)
+            {
+                MessageBox.Show(
+                    "The running viewer could not open this file. Close md-viewer and try again.",
+                    "Unable to open file",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
             Shutdown(forwarded ? 0 : 1);
             return;
         }
 
-        var window = new MainWindow(request.FilePath, request.Error);
-        MainWindow = window;
-        window.Show();
-        _ = ListenForLaunchRequestsAsync(window);
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
+        _ = ListenForLaunchRequestsAsync();
+        OpenLaunchRequest(request);
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -39,13 +48,25 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private async Task ListenForLaunchRequestsAsync(MainWindow window)
+    internal Task<CoreWebView2Environment> GetWebViewEnvironmentAsync() =>
+        _webViewEnvironment ??= CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "md-viewer",
+            "WebView2"));
+
+    private void OpenLaunchRequest(LaunchRequest request)
+    {
+        var window = new MainWindow(request.FilePath, request.Error);
+        window.Show();
+        window.Activate();
+    }
+
+    private async Task ListenForLaunchRequestsAsync()
     {
         try
         {
             await _singleInstance!.ListenAsync(
-                request => Dispatcher.InvokeAsync(
-                    () => window.OpenLaunchRequestAsync(request)).Task.Unwrap(),
+                request => Dispatcher.InvokeAsync(() => OpenLaunchRequest(request)).Task,
                 _shutdown.Token);
         }
         catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)

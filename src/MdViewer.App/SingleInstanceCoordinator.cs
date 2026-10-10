@@ -8,16 +8,17 @@ namespace MdViewer.App;
 
 internal sealed class SingleInstanceCoordinator : IDisposable
 {
-    private const string MutexName = @"Local\md-viewer-single-instance";
-    private const string PipeName = "md-viewer-single-instance";
+    private const string InstanceName = "md-viewer-single-instance";
     private const int MaxRequestBytes = 128 * 1024;
 
     private readonly Mutex _mutex;
     private readonly bool _ownsMutex;
+    private readonly string _pipeName;
 
-    public SingleInstanceCoordinator()
+    public SingleInstanceCoordinator(string instanceName = InstanceName)
     {
-        _mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
+        _pipeName = instanceName;
+        _mutex = new Mutex(initiallyOwned: true, $@"Local\{instanceName}", out var createdNew);
         _ownsMutex = createdNew;
     }
 
@@ -31,12 +32,26 @@ internal sealed class SingleInstanceCoordinator : IDisposable
             {
                 using var client = new NamedPipeClientStream(
                     ".",
-                    PipeName,
-                    PipeDirection.Out,
+                    _pipeName,
+                    PipeDirection.InOut,
                     PipeOptions.Asynchronous);
                 await client.ConnectAsync(100, cancellationToken).ConfigureAwait(false);
                 await WriteRequestAsync(client, request, cancellationToken).ConfigureAwait(false);
-                return true;
+                using var acknowledgementTimeout =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                acknowledgementTimeout.CancelAfter(TimeSpan.FromSeconds(10));
+                var acknowledgement = new byte[1];
+                try
+                {
+                    await client.ReadExactlyAsync(acknowledgement, acknowledgementTimeout.Token)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                return acknowledgement[0] == 1;
             }
             catch (TimeoutException)
             {
@@ -68,8 +83,8 @@ internal sealed class SingleInstanceCoordinator : IDisposable
         while (!cancellationToken.IsCancellationRequested)
         {
             using var server = new NamedPipeServerStream(
-                PipeName,
-                PipeDirection.In,
+                _pipeName,
+                PipeDirection.InOut,
                 maxNumberOfServerInstances: 1,
                 PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
@@ -79,6 +94,8 @@ internal sealed class SingleInstanceCoordinator : IDisposable
                 await server.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
                 var request = await ReadRequestAsync(server, cancellationToken).ConfigureAwait(false);
                 await handleRequest(request).ConfigureAwait(false);
+                await server.WriteAsync(new byte[] { 1 }, cancellationToken).ConfigureAwait(false);
+                await server.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
