@@ -1,6 +1,6 @@
 # Repository index
 
-Freshness: `2ee34cd`, plus README presentation refresh (2026-11-25). Added `docs/assets/md-viewer-hero.png`; no paths deleted.
+Freshness: `03e185f`, plus 1.0.2 release metadata (2026-11-25). No paths added or deleted.
 
 ## Functional areas
 

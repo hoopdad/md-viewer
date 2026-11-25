@@ -2,11 +2,14 @@
 
 ## Unreleased
 
+## 1.0.2 - 2026-11-25
+
 - Fixed valid hyperlinks appearing struck through by explicitly underlining
   rendered links.
 - Relative links to existing local `.md` and `.markdown` files now open the
   linked document in a new viewer window.
 - The no-document welcome screen displays the application version.
+- Native self-contained x64 and ARM64 MSI installers, version 1.0.2.
 
 ## 1.0.1 - 2026-10-10
 
@@ -41,7 +44,7 @@ First public release of md-viewer, a read-only Markdown viewer for Windows.
 ### Release notes
 
 Install the MSI matching your Windows architecture. See
-[installation instructions](README.md#install-101) for prerequisites,
+[installation instructions](README.md#install-102) for prerequisites,
 file associations, uninstalling, and SHA-256 verification.
 
 The installers are unsigned. Files larger than 8 MiB are not supported.
