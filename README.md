@@ -7,9 +7,9 @@ or keep project docs side by side, without launching a full editor.
 
 ![md-viewer: Read at full speed. A cinematic cartoon crew celebrates fast opening, rich Markdown, and focused reading.](docs/assets/md-viewer-hero.png)
 
-**[Download for x64](https://github.com/hoopdad/md-viewer/releases/download/v1.0.1/md-viewer-setup-x64.msi)**
-| **[Download for ARM64](https://github.com/hoopdad/md-viewer/releases/download/v1.0.1/md-viewer-setup-arm64.msi)**
-| [Installation](#install-101) | [Build from source](#build-from-source)
+**[Download for x64](https://github.com/hoopdad/md-viewer/releases/download/v1.0.2/md-viewer-setup-x64.msi)**
+| **[Download for ARM64](https://github.com/hoopdad/md-viewer/releases/download/v1.0.2/md-viewer-setup-arm64.msi)**
+| [Installation](#install-102) | [Build from source](#build-from-source)
 
 ## Less friction. More reading.
 
@@ -27,15 +27,15 @@ or keep project docs side by side, without launching a full editor.
 - **Local docs stay local.** Relative images load on demand; remote images,
   scripts, and resources outside the document directory tree are blocked.
 
-## Install 1.0.1
+## Install 1.0.2
 
 **No build tools required.** Download the installer for your Windows system
-from the [1.0.1 release](https://github.com/hoopdad/md-viewer/releases/tag/v1.0.1):
+from the [1.0.2 release](https://github.com/hoopdad/md-viewer/releases/tag/v1.0.2):
 
 | Windows system type | Installer |
 | --- | --- |
-| x64 (Intel or AMD) | [md-viewer-setup-x64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.1/md-viewer-setup-x64.msi) |
-| ARM64 (Windows on Arm) | [md-viewer-setup-arm64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.1/md-viewer-setup-arm64.msi) |
+| x64 (Intel or AMD) | [md-viewer-setup-x64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.2/md-viewer-setup-x64.msi) |
+| ARM64 (Windows on Arm) | [md-viewer-setup-arm64.msi](https://github.com/hoopdad/md-viewer/releases/download/v1.0.2/md-viewer-setup-arm64.msi) |
 
 1. **Check your system.** Find your architecture in
    **Settings > System > About > System type**.
@@ -54,7 +54,7 @@ from the [1.0.1 release](https://github.com/hoopdad/md-viewer/releases/tag/v1.0.
 
 **Download verification:** Release installers are **not code-signed**; Windows
 may show an unknown-publisher or SmartScreen warning. Compare the downloaded
-file's hash with the release's [SHA256SUMS.txt](https://github.com/hoopdad/md-viewer/releases/download/v1.0.1/SHA256SUMS.txt)
+file's hash with the release's [SHA256SUMS.txt](https://github.com/hoopdad/md-viewer/releases/download/v1.0.2/SHA256SUMS.txt)
 and follow your organization's software policy:
 
 ```powershell
@@ -69,7 +69,7 @@ use **Open with > Choose another app** or **Settings > Apps > Default apps**.
 The installer does not override a protected user-selected default.
 
 **Upgrading development builds:** If you installed an unreleased MSI labeled
-1.1.0, 1.2.0, or 1.3.0, uninstall it before installing 1.0.1; Windows Installer
+1.1.0, 1.2.0, or 1.3.0, uninstall it before installing 1.0.2; Windows Installer
 blocks that version downgrade.
 
 **Uninstalling:** Use **Settings > Apps > Installed apps** (Windows 11) or
@@ -100,9 +100,8 @@ schemes, and local images outside the document directory tree are blocked.
 Links to web pages or email open in the associated external application after
 confirmation. There are no plugins or script-based diagrams.
 
-**In the source tree, not yet in 1.0.1:** Relative links to existing local
-Markdown files open the linked document in a new viewer window. See the
-[changelog](CHANGELOG.md) for unreleased changes.
+Relative links to existing local Markdown files open the linked document in a
+new viewer window. See the [changelog](CHANGELOG.md) for release notes.
 
 ## Build from source
 
