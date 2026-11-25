@@ -1,6 +1,6 @@
 # Repository index
 
-Freshness: `4c3c70d`, plus local Markdown link navigation work (2026-11-25). No paths added or deleted.
+Freshness: `2ee34cd`, plus README presentation refresh (2026-11-25). Added `docs/assets/md-viewer-hero.png`; no paths deleted.
 
 ## Functional areas
 
@@ -8,7 +8,7 @@ Freshness: `4c3c70d`, plus local Markdown link navigation work (2026-11-25). No 
 - Markdown loading and rendering: bounded file reads, title detection, Markdig parsing, sanitization, local-image and local-Markdown-link resolution, HTML generation, and metrics in `src\MdViewer.Core\MarkdownFileLoader.cs`, `MarkdownRenderer.cs`, `MarkdownDocument.cs`, and `RenderedMarkdown.cs`.
 - Editor integration: editor preferences and process launch in `src\MdViewer.App\EditorLauncher.cs`, `EditorSettingsWindow.xaml*`, and `src\MdViewer.Core\EditorSettingsStore.cs`.
 - Packaging and shell registration: native self-contained x64 and ARM64 Windows publishing in `scripts\Build-Installer.ps1`; architecture-parameterized WiX installer sources in `installer\MdViewer.Installer`.
-- Product, installation, and release notes: `README.md`, `CHANGELOG.md`, and `docs\ARCHITECTURE.md`.
+- Product, installation, and release notes: `README.md`, `CHANGELOG.md`, and `docs\ARCHITECTURE.md`; README campaign artwork in `docs\assets\md-viewer-hero.png`.
 
 ## Technical layers and dependency flow
 
@@ -30,6 +30,7 @@ Freshness: `4c3c70d`, plus local Markdown link navigation work (2026-11-25). No 
 - Security invariants: `docs\ARCHITECTURE.md`, renderer tests, and WebView settings/event handlers in `MainWindow.xaml.cs`.
 - Installer/publish behavior: `scripts\Build-Installer.ps1`, `installer\MdViewer.Installer`.
 - Release version: `Directory.Build.props` supplies `Version` to app/core assemblies and the WiX `ProductVersion` constant.
+- README/download experience: benefits, current release links, install/use/source-build instructions in `README.md`; keep its local hero image under `docs\assets` so it renders offline in the viewer as well as on GitHub. Distinguish unreleased source features from installer capabilities using `CHANGELOG.md`.
 - Windows execution/DPI compatibility: tracked `src\MdViewer.App\app.manifest`.
 
 ## Conventions and tests
