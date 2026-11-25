@@ -82,12 +82,17 @@ function Get-ViewerProcess {
 
 function Open-TestFile([string] $Path) {
     if ($UseFileAssociation) {
+        $waitForForwarder = if ($null -ne $script:viewer) { "/wait " } else { "" }
         $launcher = Start-Process -FilePath $env:ComSpec `
-            -ArgumentList "/d /c start `"`" `"$Path`"" -PassThru
+            -ArgumentList "/d /c start `"`" $waitForForwarder`"$Path`"" -PassThru
         if (!$launcher.WaitForExit(10000)) { throw "Shell launch timed out for $Path." }
         if ($launcher.ExitCode -ne 0) { throw "Shell launch failed for $Path." }
     } else {
-        Start-Process -FilePath $Executable -ArgumentList "`"$Path`"" | Out-Null
+        $launcher = Start-Process -FilePath $Executable -ArgumentList "`"$Path`"" -PassThru
+        if ($null -ne $script:viewer) {
+            if (!$launcher.WaitForExit(10000)) { throw "Launch forwarding timed out for $Path." }
+            if ($launcher.ExitCode -ne 0) { throw "Launch forwarding failed for $Path." }
+        }
     }
 }
 

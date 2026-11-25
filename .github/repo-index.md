@@ -1,6 +1,6 @@
 # Repository index
 
-Freshness: `03e185f`, plus 1.0.2 release metadata (2026-11-25). No paths added or deleted.
+Freshness: `c1d30e8`, plus release smoke-test forwarding synchronization (2026-11-25). No paths added or deleted.
 
 ## Functional areas
 
@@ -40,5 +40,6 @@ Freshness: `03e185f`, plus 1.0.2 release metadata (2026-11-25). No paths added o
 - The package-free launch coordinator is linked into core tests for concurrent forwarding and acknowledgement coverage. A secondary process exits successfully only after the primary handles its launch request.
 - Repeatable renderer timing and allocation scenarios live in the package-free console project `tests\MdViewer.Performance`.
 - Windows shell/window lifecycle regression: `scripts\Test-MultiWindow.ps1 -Executable <app.exe>`; pass `-UseFileAssociation` to exercise `cmd /c start` with installed associations. Requires an interactive Windows desktop and no existing viewer windows; checks document titles, duplicates, independent closing, forwarding after the original closes, and last-window process exit.
+- The lifecycle test waits for secondary launchers to exit successfully before asserting one shared process; document rendering can finish before the forwarding process exits, especially under emulation.
 - Standard validation: `dotnet restore MdViewer.slnx --locked-mode`, `dotnet test MdViewer.slnx -c Release --no-restore`, and `dotnet build MdViewer.slnx -c Release --no-restore`; scan dependencies with `dotnet list MdViewer.slnx package --vulnerable --include-transitive`.
 - Preserve the read-only, no-network, deny-by-default rendering model when changing performance-sensitive code.
