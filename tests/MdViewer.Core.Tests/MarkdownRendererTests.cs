@@ -187,6 +187,100 @@ public sealed class MarkdownRendererTests
     }
 
     [Fact]
+    public void Render_maps_relative_local_markdown_links()
+    {
+        using var directory = new TemporaryDirectory();
+        var markdownPath = Path.Combine(directory.Path, "README.md");
+        var linkedPath = Path.Combine(directory.Path, "docs", "linked file.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(linkedPath)!);
+        File.WriteAllText(linkedPath, "# Linked");
+
+        var result = _renderer.Render(
+            "[linked](docs/linked%20file.md#section)",
+            "Links",
+            markdownPath);
+
+        var link = Assert.Single(result.Links);
+        Assert.Equal(linkedPath, link.Value.FilePath);
+        Assert.Contains(
+            $"href=\"https://md-viewer.local/links/{link.Key}\"",
+            result.Html);
+        Assert.Contains("text-decoration: underline", result.Html);
+        Assert.DoesNotContain("<a href=\"#md-viewer-blocked-link\"", result.Html);
+    }
+
+    [Fact]
+    public void Render_maps_all_links_from_a_local_markdown_catalog()
+    {
+        using var directory = new TemporaryDirectory();
+        var markdownPath = Path.Combine(directory.Path, "loop-catalog.md");
+        var targets = new[]
+        {
+            "wishlist-coverage.md",
+            "systems-architecture.md",
+            "contracts.md",
+            "loop-refactor.md"
+        };
+        foreach (var target in targets)
+        {
+            File.WriteAllText(Path.Combine(directory.Path, target), "# Linked");
+        }
+
+        var markdown = string.Join(
+            " ",
+            "[Wishlist coverage](wishlist-coverage.md)",
+            "[systems architecture](systems-architecture.md)",
+            "[contracts](contracts.md)",
+            "[refactor plan](loop-refactor.md)");
+
+        var result = _renderer.Render(markdown, "Loop catalog", markdownPath);
+
+        Assert.Equal(4, result.Links.Count);
+        foreach (var target in targets)
+        {
+            Assert.Contains(
+                result.Links.Values,
+                link => link.FilePath == Path.Combine(directory.Path, target));
+        }
+
+        Assert.DoesNotContain("<a href=\"#md-viewer-blocked-link\"", result.Html);
+    }
+
+    [Fact]
+    public void Render_maps_relative_markdown_links_outside_the_document_directory()
+    {
+        using var directory = new TemporaryDirectory();
+        var documentDirectory = Path.Combine(directory.Path, "docs");
+        var markdownPath = Path.Combine(documentDirectory, "guide.md");
+        var linkedPath = Path.Combine(directory.Path, "README.md");
+        Directory.CreateDirectory(documentDirectory);
+        File.WriteAllText(linkedPath, "# Linked");
+
+        var result = _renderer.Render(
+            "[parent document](../README.md)",
+            "Guide",
+            markdownPath);
+
+        var link = Assert.Single(result.Links);
+        Assert.Equal(linkedPath, link.Value.FilePath);
+    }
+
+    [Theory]
+    [InlineData("missing.md")]
+    [InlineData("document.txt")]
+    [InlineData("../missing.md")]
+    public void Render_blocks_unavailable_or_non_markdown_local_links(string target)
+    {
+        using var directory = new TemporaryDirectory();
+        var markdownPath = Path.Combine(directory.Path, "README.md");
+
+        var result = _renderer.Render($"[click]({target})", "Links", markdownPath);
+
+        Assert.Empty(result.Links);
+        Assert.Contains("href=\"#md-viewer-blocked-link\"", result.Html);
+    }
+
+    [Fact]
     public void Render_emits_a_locked_down_document()
     {
         var result = _renderer.Render("# Safe", "A <title>");

@@ -1,11 +1,11 @@
 # Repository index
 
-Freshness: `4c3c70d`, plus the 1.0.1 multi-window release worktree (2026-10-10). Added paths considered: `scripts\Test-MultiWindow.ps1`, `tests\MdViewer.Core.Tests\SingleInstanceCoordinatorTests.cs`. No deleted paths.
+Freshness: `4c3c70d`, plus local Markdown link navigation work (2026-11-25). No paths added or deleted.
 
 ## Functional areas
 
 - Windows viewer shell: WPF startup, single-process launch forwarding, commands, drag/drop, status UI, and WebView2 hosting in `src\MdViewer.App\App.xaml*`, `SingleInstanceCoordinator.cs`, and `MainWindow.xaml*`.
-- Markdown loading and rendering: bounded file reads, title detection, Markdig parsing, sanitization, local-image resolution, HTML generation, and metrics in `src\MdViewer.Core\MarkdownFileLoader.cs`, `MarkdownRenderer.cs`, `MarkdownDocument.cs`, and `RenderedMarkdown.cs`.
+- Markdown loading and rendering: bounded file reads, title detection, Markdig parsing, sanitization, local-image and local-Markdown-link resolution, HTML generation, and metrics in `src\MdViewer.Core\MarkdownFileLoader.cs`, `MarkdownRenderer.cs`, `MarkdownDocument.cs`, and `RenderedMarkdown.cs`.
 - Editor integration: editor preferences and process launch in `src\MdViewer.App\EditorLauncher.cs`, `EditorSettingsWindow.xaml*`, and `src\MdViewer.Core\EditorSettingsStore.cs`.
 - Packaging and shell registration: native self-contained x64 and ARM64 Windows publishing in `scripts\Build-Installer.ps1`; architecture-parameterized WiX installer sources in `installer\MdViewer.Installer`.
 - Product, installation, and release notes: `README.md`, `CHANGELOG.md`, and `docs\ARCHITECTURE.md`.
@@ -26,6 +26,7 @@ Freshness: `4c3c70d`, plus the 1.0.1 multi-window release worktree (2026-10-10).
 - Parse/render cost: `src\MdViewer.Core\MarkdownFileLoader.cs`, `MarkdownRenderer.cs`.
 - First-paint/layout cost: generated HTML/CSS in `MarkdownRenderer.cs` and WebView initialization/navigation in `MainWindow.xaml.cs`.
 - Local image behavior: `MarkdownRenderer.ImageResolver` and `MainWindow.OnWebResourceRequested`.
+- Local Markdown link behavior: `MarkdownRenderer.MarkdownLinkResolver` and `MainWindow.OnNavigationStarting` / `OnNewWindowRequested`; opaque rendered IDs map to validated local `.md` / `.markdown` paths before launching a new viewer window.
 - Security invariants: `docs\ARCHITECTURE.md`, renderer tests, and WebView settings/event handlers in `MainWindow.xaml.cs`.
 - Installer/publish behavior: `scripts\Build-Installer.ps1`, `installer\MdViewer.Installer`.
 - Release version: `Directory.Build.props` supplies `Version` to app/core assemblies and the WiX `ProductVersion` constant.

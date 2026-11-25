@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fixed valid hyperlinks appearing struck through by explicitly underlining
+  rendered links.
+- Relative links to existing local `.md` and `.markdown` files now open the
+  linked document in a new viewer window.
+- The no-document welcome screen displays the application version.
+
 ## 1.0.1 - 2026-10-10
 
 - Fixed shell launches replacing the document in an existing window. Each
