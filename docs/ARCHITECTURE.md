@@ -30,12 +30,16 @@ Markdown files are untrusted input.
    become inert placeholders. This prevents tracking pixels and SMB credential
    leakage while supporting repository-local documentation assets.
 4. Only `https`, `http`, `mailto`, and in-document fragment links survive
-   rendering. All other targets become inert.
+   rendering. Relative links to existing local Markdown files are replaced with
+   opaque same-origin targets and mapped to their resolved paths. All other
+   targets become inert.
 5. Generated HTML carries a deny-by-default Content Security Policy.
 6. WebView2 JavaScript, host objects, web messages, downloads, permissions,
    context menus, developer tools, and unsolicited navigation are disabled.
 7. External links are brokered by the native app and opened only after the
-   destination scheme is independently validated.
+   destination scheme is independently validated. Mapped local Markdown links
+   launch a second viewer process with a validated path; its normal
+   single-instance protocol opens the new document in an independent window.
 
 ## Windows integration
 

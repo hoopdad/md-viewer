@@ -57,8 +57,9 @@ Windows Installer correctly blocks that version downgrade.
 **Editor settings** lets you select an editor EXE; by default, Windows chooses
 the editor using file associations. The viewer never saves the source file.
 Documents are limited to 8 MiB. Remote images, arbitrary HTML, scripts, and
-local images outside the document directory tree are blocked. Links to web
-pages or email open in the associated external application.
+local images outside the document directory tree are blocked. Relative links to
+existing local Markdown files open in a new viewer window. Links to web pages or
+email open in the associated external application after confirmation.
 
 Opening files from Explorer, `start x.md`, or another app creates a new window
 for each launch, including repeated opens of the same file. **Open file** and

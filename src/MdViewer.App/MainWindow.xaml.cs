@@ -13,6 +13,7 @@ namespace MdViewer.App;
 public partial class MainWindow : Window
 {
     private const string DocumentUri = "https://md-viewer.local/document";
+    private const string MarkdownLinkUriPrefix = "https://md-viewer.local/links/";
 
     private readonly MarkdownRenderer _renderer = new();
     private readonly EditorSettingsStore _editorSettings = new(Path.Combine(
@@ -25,6 +26,8 @@ public partial class MainWindow : Window
     private byte[]? _documentContent;
     private IReadOnlyDictionary<string, RenderedImage> _documentImages =
         new Dictionary<string, RenderedImage>();
+    private IReadOnlyDictionary<string, RenderedMarkdownLink> _documentLinks =
+        new Dictionary<string, RenderedMarkdownLink>();
     private TaskCompletionSource? _documentReady;
     private ulong _documentNavigationId;
     private int _loadVersion;
@@ -35,6 +38,7 @@ public partial class MainWindow : Window
         _initialFilePath = initialFilePath;
         _initialError = initialError;
         InitializeComponent();
+        WelcomeVersion.Text = $"Version {GetApplicationVersion()}";
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -125,6 +129,7 @@ public partial class MainWindow : Window
             Viewer.Visibility = Visibility.Visible;
             _documentContent = Encoding.UTF8.GetBytes(rendered.Html);
             _documentImages = rendered.Images;
+            _documentLinks = rendered.Links;
             _documentReady?.TrySetCanceled();
             _documentReady = new TaskCompletionSource(
                 TaskCreationOptions.RunContinuationsAsynchronously);
@@ -186,6 +191,7 @@ public partial class MainWindow : Window
         _currentFilePath = null;
         _documentContent = null;
         _documentImages = new Dictionary<string, RenderedImage>();
+        _documentLinks = new Dictionary<string, RenderedMarkdownLink>();
         DocumentTitle.Text = "md-viewer";
         DocumentPath.Text = "Open a Markdown file to begin";
         DocumentPath.ToolTip = null;
@@ -196,6 +202,7 @@ public partial class MainWindow : Window
         Viewer.Visibility = Visibility.Collapsed;
         WelcomePanel.Visibility = Visibility.Visible;
         WelcomeTitle.Text = title;
+        WelcomeVersion.Visibility = Visibility.Collapsed;
         WelcomeMessage.Text = message;
         StatusText.Text = "Ready";
     }
@@ -394,6 +401,11 @@ public partial class MainWindow : Window
         }
 
         e.Cancel = true;
+        if (TryOpenMarkdownLink(e.Uri))
+        {
+            return;
+        }
+
         OpenExternalLink(e.Uri);
     }
 
@@ -417,6 +429,11 @@ public partial class MainWindow : Window
     private void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
     {
         e.Handled = true;
+        if (TryOpenMarkdownLink(e.Uri))
+        {
+            return;
+        }
+
         OpenExternalLink(e.Uri);
     }
 
@@ -526,6 +543,71 @@ public partial class MainWindow : Window
                     MessageBoxImage.Error);
             }
         }
+    }
+
+    private bool TryOpenMarkdownLink(string target)
+    {
+        if (!target.StartsWith(MarkdownLinkUriPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var linkId = target[MarkdownLinkUriPrefix.Length..];
+        if (!_documentLinks.TryGetValue(linkId, out var link))
+        {
+            StatusText.Text = "Blocked an unknown Markdown link";
+            return true;
+        }
+
+        try
+        {
+            var executablePath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(executablePath))
+            {
+                StatusText.Text = "Unable to open Markdown link";
+                return true;
+            }
+
+            var startInfo = new ProcessStartInfo(executablePath)
+            {
+                UseShellExecute = false
+            };
+            startInfo.ArgumentList.Add(link.FilePath);
+            Process.Start(startInfo);
+            StatusText.Text = "Opened Markdown link in a new window";
+        }
+        catch (Win32Exception)
+        {
+            ShowMarkdownLinkError();
+        }
+        catch (InvalidOperationException)
+        {
+            ShowMarkdownLinkError();
+        }
+
+        return true;
+    }
+
+    private void ShowMarkdownLinkError()
+    {
+        StatusText.Text = "Unable to open Markdown link";
+        MessageBox.Show(
+            this,
+            "md-viewer could not open the linked Markdown file in a new window.",
+            "Unable to open Markdown link",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
+    }
+
+    private static string GetApplicationVersion()
+    {
+        var version = typeof(MainWindow).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()
+            ?.InformationalVersion;
+        var separator = version?.IndexOf('+') ?? -1;
+        return separator >= 0 ? version![..separator] : version ?? "unknown";
     }
 
     private static string FormatBytes(long bytes)

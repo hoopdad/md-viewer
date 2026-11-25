@@ -128,6 +128,11 @@
                                    FontSize="26"
                                    FontWeight="SemiBold"
                                    Text="Read Markdown beautifully"/>
+                        <TextBlock x:Name="WelcomeVersion"
+                                   Margin="0,4,0,0"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#8C959F"
+                                   FontSize="12"/>
                         <TextBlock x:Name="WelcomeMessage"
                                    Margin="0,10,0,0"
                                    HorizontalAlignment="Center"

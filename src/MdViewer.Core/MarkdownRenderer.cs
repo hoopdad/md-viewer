@@ -14,9 +14,13 @@ namespace MdViewer.Core;
 public sealed class MarkdownRenderer
 {
     private const string ImageUriPrefix = "https://md-viewer.local/assets/";
+    private const string LinkUriPrefix = "https://md-viewer.local/links/";
 
     private static readonly IReadOnlyDictionary<string, RenderedImage> EmptyImages =
         new Dictionary<string, RenderedImage>();
+
+    private static readonly IReadOnlyDictionary<string, RenderedMarkdownLink> EmptyLinks =
+        new Dictionary<string, RenderedMarkdownLink>();
 
     private static readonly IReadOnlyDictionary<string, string> ImageContentTypes =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -52,7 +56,7 @@ public sealed class MarkdownRenderer
         ArgumentNullException.ThrowIfNull(title);
 
         var document = Markdig.Markdown.Parse(markdown, Pipeline);
-        var images = SanitizeLinks(document, markdown, sourceFilePath);
+        var links = SanitizeLinks(document, markdown, sourceFilePath);
 
         var body = Markdig.Markdown.ToHtml(document, Pipeline);
 
@@ -73,10 +77,14 @@ public sealed class MarkdownRenderer
             </html>
             """;
 
-        return new RenderedMarkdown(html, CountWords(markdown), images);
+        return new RenderedMarkdown(
+            html,
+            CountWords(markdown),
+            links.Images,
+            links.MarkdownLinks);
     }
 
-    private static IReadOnlyDictionary<string, RenderedImage> SanitizeLinks(
+    private static SanitizedLinks SanitizeLinks(
         Markdig.Syntax.MarkdownDocument document,
         string markdown,
         string? sourceFilePath)
@@ -106,6 +114,7 @@ public sealed class MarkdownRenderer
         }
 
         ImageResolver? imageResolver = null;
+        MarkdownLinkResolver? markdownLinkResolver = null;
         if (links is not null)
         {
             foreach (var link in links)
@@ -124,8 +133,17 @@ public sealed class MarkdownRenderer
                 }
                 else if (!IsAllowedLink(link.Url))
                 {
-                    link.Url = "#md-viewer-blocked-link";
-                    link.Title = "Blocked unsafe link";
+                    markdownLinkResolver ??= new MarkdownLinkResolver(sourceFilePath);
+                    var localTarget = markdownLinkResolver.CreateTarget(link.Url);
+                    if (localTarget is not null)
+                    {
+                        link.Url = localTarget;
+                    }
+                    else
+                    {
+                        link.Url = "#md-viewer-blocked-link";
+                        link.Title = "Blocked unsafe link";
+                    }
                 }
             }
         }
@@ -195,7 +213,9 @@ public sealed class MarkdownRenderer
             }
         }
 
-        return imageResolver?.Images ?? EmptyImages;
+        return new SanitizedLinks(
+            imageResolver?.Images ?? EmptyImages,
+            markdownLinkResolver?.Links ?? EmptyLinks);
     }
 
     private static bool TryParseImageTag(string tag, out ImageAttributes attributes)
@@ -493,6 +513,111 @@ public sealed class MarkdownRenderer
         }
     }
 
+    private sealed class MarkdownLinkResolver
+    {
+        private readonly string? _documentDirectory;
+        private readonly Dictionary<string, string?> _targetsBySource =
+            new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _linkIdsByPath =
+            new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, RenderedMarkdownLink> _links =
+            new(StringComparer.Ordinal);
+
+        public MarkdownLinkResolver(string? sourceFilePath)
+        {
+            if (string.IsNullOrWhiteSpace(sourceFilePath))
+            {
+                return;
+            }
+
+            try
+            {
+                _documentDirectory = Path.GetFullPath(Path.GetDirectoryName(sourceFilePath)!);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                _documentDirectory = null;
+            }
+        }
+
+        public IReadOnlyDictionary<string, RenderedMarkdownLink> Links => _links;
+
+        public string? CreateTarget(string? source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                return null;
+            }
+
+            if (_targetsBySource.TryGetValue(source, out var cached))
+            {
+                return cached;
+            }
+
+            string? target = null;
+            if (TryResolve(source, out var filePath))
+            {
+                if (!_linkIdsByPath.TryGetValue(filePath, out var linkId))
+                {
+                    linkId = _links.Count.ToString(CultureInfo.InvariantCulture);
+                    _linkIdsByPath.Add(filePath, linkId);
+                    _links.Add(linkId, new RenderedMarkdownLink(filePath));
+                }
+
+                target = LinkUriPrefix + linkId;
+            }
+
+            _targetsBySource.Add(source, target);
+            return target;
+        }
+
+        private bool TryResolve(string source, out string filePath)
+        {
+            filePath = string.Empty;
+            if (_documentDirectory is null
+                || Path.IsPathRooted(source)
+                || Uri.TryCreate(source, UriKind.Absolute, out _))
+            {
+                return false;
+            }
+
+            var suffixIndex = source.IndexOfAny(['#', '?']);
+            var path = suffixIndex < 0 ? source : source[..suffixIndex];
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+
+            try
+            {
+                var decodedPath = Uri.UnescapeDataString(path.Replace('\\', '/'));
+                var resolvedPath = Path.GetFullPath(
+                    Path.Combine(
+                        _documentDirectory,
+                        decodedPath.Replace('/', Path.DirectorySeparatorChar)));
+                var extension = Path.GetExtension(resolvedPath);
+                if ((extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
+                     || extension.Equals(".markdown", StringComparison.OrdinalIgnoreCase))
+                    && File.Exists(resolvedPath))
+                {
+                    filePath = resolvedPath;
+                    return true;
+                }
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or PathTooLongException or UriFormatException)
+            {
+            }
+
+            return false;
+        }
+    }
+
+    private sealed record SanitizedLinks(
+        IReadOnlyDictionary<string, RenderedImage> Images,
+        IReadOnlyDictionary<string, RenderedMarkdownLink> MarkdownLinks);
+
     private static string GetInlineText(ContainerInline container)
     {
         var text = new StringBuilder();
@@ -684,7 +809,7 @@ public sealed class MarkdownRenderer
         }
         h1 { margin-top: 0; font-size: 2.2em; }
         h1, h2 { padding-bottom: .35em; border-bottom: 1px solid var(--border); }
-        a { color: var(--accent); text-underline-offset: .18em; }
+        a { color: var(--accent); text-decoration: underline; text-underline-offset: .18em; }
         a:hover { text-decoration-thickness: 2px; }
         a[href="#md-viewer-blocked-link"] {
           color: var(--muted);
